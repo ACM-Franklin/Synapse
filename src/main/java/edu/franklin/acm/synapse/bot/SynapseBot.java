@@ -18,10 +18,8 @@ public class SynapseBot implements EventListener {
 
     private final JDA jda;
 
-    @ConfigProperty(name = "discord.token")
-    String discordToken;
-
-    public SynapseBot() throws InterruptedException {
+    public SynapseBot(@ConfigProperty(name = "discord.token") String discordToken)
+            throws InterruptedException {
         jda = JDABuilder.createDefault(discordToken)
                 .addEventListeners(this)
                 .build();
