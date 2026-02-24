@@ -43,3 +43,10 @@ nb-configuration.xml
 /.quarkus/cli/plugins/
 # TLS Certificates
 .certs/
+
+# MCP Files
+.serena/
+
+# Local docs
+/docs/javadoc/
+.github/copilot-instructions.md

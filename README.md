@@ -1,62 +1,109 @@
-# code-with-quarkus
+# Synapse
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+A community engagement engine for Discord. One instance, one guild.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+Synapse records activity in your server, evaluates it against administrator-defined rules, and rewards members with XP and currency. The event lake is immutable. Rewards are derived and recalculable.
 
-## Running the application in dev mode
+For a full description of what Synapse is and how it works, see [docs/WHAT_IS_SYNAPSE.md](docs/WHAT_IS_SYNAPSE.md).
 
-You can run your application in dev mode that enables live coding using:
+---
 
-```shell script
+## Stack
+
+| Component       | Technology                      |
+|-----------------|---------------------------------|
+| Language        | Java 21+                        |
+| Framework       | Quarkus                         |
+| Discord API     | JDA (Java Discord API) 6.3.1+   |
+| Database (Dev)  | SQLite                          |
+| Database (Prod) | PostgreSQL                      |
+| Database Access | JDBI 3                          |
+| Serialization   | Jackson                         |
+| Frontend        | Svelte + Vite (separate repo)   |
+
+---
+
+## Prerequisites
+
+- Java 21 or later
+- Maven 3.9+ (or use the included `mvnw` wrapper)
+- A Discord bot token with `MESSAGE_CONTENT` intent enabled
+
+---
+
+## Configuration
+
+Set these environment variables (or add them to a `.env` file in the project root):
+
+| Variable                 | Required | Default   | Description                                      |
+|--------------------------|----------|-----------|--------------------------------------------------|
+| `DISCORD_TOKEN`          | Yes      | —         | Your Discord bot token                           |
+| `GUILD_ID`               | Yes      | `0`       | The snowflake ID of the guild this instance manages |
+| `HISTORICAL_SCAN_ENABLED`| No       | `false`   | Run historical channel scan on startup           |
+
+---
+
+## Running in Dev Mode
+
+```shell
 ./mvnw quarkus:dev
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+Quarkus dev mode enables live coding — save a file and the app recompiles automatically.
 
-## Packaging and running the application
+Dev UI is available at [http://localhost:8080/q/dev/](http://localhost:8080/q/dev/).
 
-The application can be packaged using:
+---
 
-```shell script
+## Building
+
+```shell
+# Standard JAR
 ./mvnw package
-```
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
-
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
+# Über-JAR (single fat jar)
 ./mvnw package -Dquarkus.package.jar.type=uber-jar
+
+# Run the packaged application
+java -jar target/quarkus-app/quarkus-run.jar
 ```
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
+---
 
-## Creating a native executable
+## Project Structure
 
-You can create a native executable using:
+```
+src/main/java/edu/franklin/acm/synapse/
+├── bot/                  # SynapseBot — JDA bootstrap and lifecycle
+├── activity/             # DAOs and domain records (JDBI)
+├── historical/           # GuildHistoricalScanner — backfill from message history
+└── scanner/              # GuildLiveScanner — real-time event ingestion
 
-```shell script
-./mvnw package -Dnative
+src/main/resources/
+├── application.properties
+└── schemas/
+    └── synapse.sql       # Single source of truth for the database schema
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
+---
 
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
+## Architecture
 
-You can then execute your native executable with: `./target/code-with-quarkus-1.0.0-SNAPSHOT-runner`
+### Event Lake (Immutable)
 
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
+All Discord activity is ingested into an append-only event table. Events are structured JSON payloads capturing the full context of each interaction. Events are never modified or deleted.
 
-## Provided Code
+### Scanners
 
-### REST
+- **GuildHistoricalScanner** — Paginates through channel history from oldest to newest. Resumable via watermark checkpoints.
+- **GuildLiveScanner** — Listens to the JDA gateway and persists events as they arrive.
 
-Easily start your REST Web Services
+### Derived Data (Future)
 
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+Currency balances, levels, achievements, and leaderboards are all derived from the event lake by the rule engine. If rules change, derived data can be recalculated from the immutable event history.
+
+---
+
+## License
+
+See [LICENSE](LICENSE).
