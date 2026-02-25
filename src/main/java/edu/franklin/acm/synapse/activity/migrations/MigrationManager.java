@@ -43,10 +43,19 @@ public class MigrationManager implements Runnable {
     }
 
     public void run() {
-        runResource(schema);
+        runResource(schema, true);
+
+        final var previousMigrations = migrations.getAll();
 
         for (final var file : migrationFiles) {
-            runResource(file);
+            final var successfulRun = previousMigrations
+                    .stream()
+                    .filter(m -> m.name().equals(file) && m.succeeded())
+                    .findFirst();
+
+            if (successfulRun.isEmpty())  {
+                runResource(file, false);
+            }
         }
     }
 
@@ -63,7 +72,7 @@ public class MigrationManager implements Runnable {
         }
     }
 
-    private void runResource(String resourcePath) {
+    private void runResource(String resourcePath, boolean forced) {
         boolean success = false;
 
         try (final var is  = resource(resourcePath).openStream();
@@ -79,7 +88,7 @@ public class MigrationManager implements Runnable {
         } catch (UnableToExecuteStatementException e) {
             log.error("Migration file \"{}\" contains invalid SQL: {}", resourcePath, e.getMessage());
         } finally {
-            migrations.commit(resourcePath, success);
+            if (!forced) migrations.commit(resourcePath, success);
         }
     }
 

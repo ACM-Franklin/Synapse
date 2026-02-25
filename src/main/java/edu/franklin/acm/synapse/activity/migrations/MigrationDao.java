@@ -1,5 +1,6 @@
 package edu.franklin.acm.synapse.activity.migrations;
 
+import org.jdbi.v3.sqlobject.config.RegisterConstructorMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -7,8 +8,9 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import java.util.List;
 
 public interface MigrationDao {
-    @SqlQuery("SELECT name FROM migrations ORDER BY occurred_at DESC")
-    List<String> getAll();
+    @SqlQuery("SELECT name, succeeded, occurred_at FROM migrations ORDER BY occurred_at DESC")
+    @RegisterConstructorMapper(Migration.class)
+    List<Migration> getAll();
 
     @SqlUpdate("INSERT INTO migrations (name, succeeded) VALUES (:name, :success)")
     void commit(@Bind("name") String name, @Bind("success") boolean success);
