@@ -15,7 +15,7 @@
 CREATE TABLE IF NOT EXISTS migrations (
     id          INTEGER NOT NULL PRIMARY KEY,
     name        VARCHAR NOT NULL,
-    succeeded   INTEGER NOT NULL,
+    succeeded   BOOLEAN NOT NULL,
     occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

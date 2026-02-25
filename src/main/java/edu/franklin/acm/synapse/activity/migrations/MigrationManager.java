@@ -99,6 +99,8 @@ public class MigrationManager implements Runnable {
              final var h   = jdbi.open()) {
             h.createScript(r.readAllAsString()).execute();
             success = true;
+
+            log.info("Successfully evaluated SQL resource \"{}\" (Forced: {})", resourcePath, forced);
         } catch (IOException e) {
             log.warn("Invalid resource path passed as migration: {} ({})", resourcePath, e.getMessage());
             throw new IllegalStateException(e);
