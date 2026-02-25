@@ -1,8 +1,6 @@
 package edu.franklin.acm.synapse.activity.migrations;
 
-import io.agroal.api.AgroalDataSource;
 import io.quarkus.runtime.Startup;
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jdbi.v3.core.Jdbi;
@@ -13,9 +11,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Singleton Bean that runs on startup. This bean manages the execution and state tracking
+ * of the migration and schema files used to keep the database up to date.
+ */
 @Startup
 @Singleton
 public class MigrationManager implements Runnable {
@@ -26,6 +27,14 @@ public class MigrationManager implements Runnable {
     private final String schema;
     private final List<String> migrationFiles;
 
+    /**
+     *
+     * @param jdbi         A live JDBI connection.
+     * @param migrationDao A DAO for maintaining migration execution state.
+     * @param doMigrations Whether to run the migrations automatically or not.
+     * @param schema       The schema file, which is the initial backbone. ALWAYS EXECUTED.
+     * @param migrations   The resource folder that contains the migration files to run.
+     */
     public MigrationManager(
             Jdbi jdbi,
             MigrationDao migrationDao,
@@ -59,6 +68,11 @@ public class MigrationManager implements Runnable {
         }
     }
 
+    /**
+     * Collects all migration files from the given resource folder.
+     * @param folder The folder to collect files from.
+     * @return A list of absolute resource paths to migration files.
+     */
     private List<String> getMigrationFiles(final String folder) {
         try (final var is = resource(folder).openStream();
              final var r  = new InputStreamReader(is);
@@ -72,6 +86,11 @@ public class MigrationManager implements Runnable {
         }
     }
 
+    /**
+     * Executes a resource SQL file, optionally committing the execution to the migrations table.
+     * @param resourcePath The path of the SQL file to execute.
+     * @param forced       Whether this execution was forced. If it was, it is not logged in the table.
+     */
     private void runResource(String resourcePath, boolean forced) {
         boolean success = false;
 
@@ -92,6 +111,11 @@ public class MigrationManager implements Runnable {
         }
     }
 
+    /**
+     * Safety wrapper for collecting JAR resources without worrying about implicit null values.
+     * @param path The path to resolve to a resource URL.
+     * @return The resource URL.
+     */
     private URL resource(String path) {
         final var resource = MigrationManager.class.getResource(path);
         if (resource == null) {
