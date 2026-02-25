@@ -35,11 +35,12 @@ For a full description of what Synapse is and how it works, see [docs/WHAT_IS_SY
 
 Set these environment variables (or add them to a `.env` file in the project root):
 
-| Variable                 | Required | Default   | Description                                      |
-|--------------------------|----------|-----------|--------------------------------------------------|
-| `DISCORD_TOKEN`          | Yes      | —         | Your Discord bot token                           |
-| `GUILD_ID`               | Yes      | `0`       | The snowflake ID of the guild this instance manages |
-| `HISTORICAL_SCAN_ENABLED`| No       | `false`   | Run historical channel scan on startup           |
+| Variable                          | Required | Default  | Description                                         |
+|-----------------------------------|----------|----------|-----------------------------------------------------|
+| `SYNAPSE_DISCORD_TOKEN`           | Yes      | —        | Your Discord bot token                              |
+| `SYNAPSE_DISCORD_GUILD_ID`        | Yes      | `0`      | The snowflake ID of the guild this instance manages |
+| `SYNAPSE_DISCORD_SCAN_HISTORICAL` | No       | `false`  | Run historical channel scan on startup              |  
+| `SYNAPSE_DATASOURCE_AUTOMIGRATE`  | No       | `false`  | Whether to run the SQL migration manager on startup |
 
 ---
 
