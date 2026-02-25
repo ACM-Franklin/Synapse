@@ -78,10 +78,7 @@ public class GuildHistoricalScanner {
             for (MessageChannel channel : channels) {
                 long startAfter = lastSeenByChannel.getOrDefault(channel.getIdLong(), 0L);
                 log.info("Starting historical scan for channel: {} (ID: {})", channel.getName(), channel.getIdLong());
-
                 scanChannelSync(channel, startAfter);
-
-                log.info("Completed scanning channel: {}", channel.getName());
             }
         }).exceptionally(ex -> {
             log.error("Fatal error during guild scan for {}", guild.getName(), ex);
@@ -101,7 +98,8 @@ public class GuildHistoricalScanner {
      */
     private void scanChannelSync(MessageChannel channel, long startAfterId) {
         long channelInternalId = channelDao.upsert(channel.getIdLong(), channel.getName(), null);
-        long currentAfterId = startAfterId;
+        long currentAfterId    = startAfterId;
+        long processedMessages = 0;
 
         while (true) {
             MessageHistory history = currentAfterId == 0L
@@ -120,14 +118,17 @@ public class GuildHistoricalScanner {
                 persistMessage(m, channelInternalId);
             }
 
+            processedMessages += messages.size();
             currentAfterId = sorted.get(sorted.size() - 1).getIdLong();
-            log.info("Scanned batch of {} messages in channel: {} (watermark: {})",
-                    messages.size(), channel.getName(), currentAfterId);
 
             if (messages.size() < PAGE_SIZE) {
                 break;
             }
         }
+
+        // Reducing the log output.
+        log.info("Scanned {} messages from following channel: {} (watermark: {})",
+                processedMessages, channel.getName(), currentAfterId);
     }
 
     /**
@@ -147,45 +148,20 @@ public class GuildHistoricalScanner {
      */
     @SuppressWarnings("null")
     private void persistMessage(Message m, long channelInternalId) {
-        long memberInternalId = memberDao.upsert(m.getAuthor().getIdLong(), m.getAuthor().getName(), m.getAuthor().isBot());
+        long memberInternalId = memberDao.upsert(
+                m.getAuthor().getIdLong(),
+                m.getAuthor().getName(),
+                m.getAuthor().isBot());
 
         // 1. Lean parent event
-        long eventId = eventDao.insert(new Event(0L, memberInternalId, channelInternalId, "MESSAGE_CREATE", null));
-
-        // 2. Normalized message_events row
-        var mentions = m.getMentions();
-        var referencedMessage = m.getReferencedMessage();
-        var timeEdited = m.getTimeEdited();
-        var content = m.getContentRaw();
-
-        MessageEvent me = new MessageEvent(
+        long eventId = eventDao.insert(new Event(
                 0L,
-                eventId,
-                m.getIdLong(),
-                m.getFlagsRaw(),
-                content != null ? content.length() : 0,
-                m.getType().getId(),
-                m.getAttachments().size(),
-                m.getReactions().stream().mapToInt(r -> r.getCount()).sum(),
-                mentions.getUsers().size(),
-                mentions.getRoles().size(),
-                mentions.getChannels().size(),
-                m.getEmbeds().size(),
-                content,
-                referencedMessage != null ? referencedMessage.getIdLong() : null,
-                timeEdited != null ? LocalDateTime.ofInstant(timeEdited.toInstant(), ZoneOffset.UTC) : null,
-                null,
-                referencedMessage != null,
-                m.getStartedThread() != null,
-                !m.getAttachments().isEmpty(),
-                mentions.mentionsEveryone(),
-                m.isTTS(),
-                m.isPinned(),
-                !m.getStickers().isEmpty(),
-                m.getPoll() != null,
-                m.isVoiceMessage(),
-                m.getAuthor().isBot()
-        );
+                memberInternalId,
+                channelInternalId,
+                "MESSAGE_CREATE",
+                null));
+
+        final var me = MessageEvent.fromDiscord(eventId, m);
 
         long messageEventId = messageEventDao.upsert(me);
 
@@ -194,18 +170,7 @@ public class GuildHistoricalScanner {
             messageAttachmentDao.deleteByMessageEventId(messageEventId);
 
             List<MessageAttachment> attachments = m.getAttachments().stream()
-                    .map(a -> new MessageAttachment(
-                            0L,
-                            messageEventId,
-                            a.getIdLong(),
-                            a.getFileName(),
-                            a.getDescription(),
-                            a.getContentType(),
-                            a.getSize(),
-                            a.getWidth(),
-                            a.getHeight(),
-                            a.getDuration() > 0 ? (double) a.getDuration() : null
-                    ))
+                    .map(a -> MessageAttachment.fromDiscord(messageEventId, a))
                     .toList();
 
             messageAttachmentDao.insertBatch(attachments);
@@ -216,15 +181,7 @@ public class GuildHistoricalScanner {
             messageReactionDao.deleteByMessageEventId(messageEventId);
 
             List<MessageReaction> reactions = m.getReactions().stream()
-                    .map(r -> new MessageReaction(
-                            0L,
-                            messageEventId,
-                            r.getEmoji().getName(),
-                            r.getEmoji().getType() == Emoji.Type.CUSTOM
-                                    ? r.getEmoji().asCustom().getIdLong() : null,
-                            r.getCount(),
-                            r.hasCount() ? r.getCount(ReactionType.SUPER) : 0
-                    ))
+                    .map(r -> MessageReaction.fromDiscord(messageEventId, r))
                     .toList();
 
             messageReactionDao.insertBatch(reactions);

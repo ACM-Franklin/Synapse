@@ -1,5 +1,6 @@
 package edu.franklin.acm.synapse.activity;
 
+import edu.franklin.acm.synapse.activity.migrations.MigrationDao;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
@@ -40,6 +41,13 @@ public class DaoProducer {
     public void init() {
         jdbi = Jdbi.create(ds);
         jdbi.installPlugin(new SqlObjectPlugin());
+    }
+
+    // Bean Export for JDBI itself, for more advanced SQL work like migrations.
+    @Produces
+    @ApplicationScoped
+    public Jdbi jdbi() {
+        return jdbi;
     }
 
     // DAO Producers: each method creates an application-scoped, on-demand JDBI
@@ -97,5 +105,11 @@ public class DaoProducer {
     @ApplicationScoped
     public VoiceSessionDao voiceSessionDao() {
         return jdbi.onDemand(VoiceSessionDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public MigrationDao migrationDao() {
+        return jdbi.onDemand(MigrationDao.class);
     }
 }

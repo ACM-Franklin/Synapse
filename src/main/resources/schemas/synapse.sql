@@ -13,8 +13,9 @@
 
 -- Tracks schema migrations applied to this database.
 CREATE TABLE IF NOT EXISTS migrations (
-    id          BIGINT PRIMARY KEY,
+    id          INTEGER NOT NULL PRIMARY KEY,
     name        VARCHAR NOT NULL,
+    succeeded   INTEGER NOT NULL,
     occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -77,8 +78,8 @@ CREATE TABLE IF NOT EXISTS members (
 -- Junction table for member roles. Current snapshot — updated on GUILD_MEMBER_UPDATE.
 -- Used to diff role changes for role transition events.
 CREATE TABLE IF NOT EXISTS member_roles (
-    member_id   BIGINT NOT NULL,
-    role_ext_id BIGINT NOT NULL,
+    member_id   INTEGER NOT NULL,
+    role_ext_id BIGINT  NOT NULL,
     PRIMARY KEY (member_id, role_ext_id),
     FOREIGN KEY (member_id) REFERENCES members (id)
 );
@@ -199,7 +200,7 @@ CREATE TABLE IF NOT EXISTS message_reactions (
     count               INTEGER NOT NULL DEFAULT 0,
     burst_count         INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (message_event_id) REFERENCES message_events (id),
-    UNIQUE (message_event_id, emoji_name, COALESCE(emoji_ext_id, 0))
+    UNIQUE (message_event_id, emoji_name, emoji_ext_id)
 );
 
 CREATE INDEX IF NOT EXISTS message_reactions_msg_idx ON message_reactions (message_event_id);

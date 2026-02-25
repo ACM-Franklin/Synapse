@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import net.dv8tion.jda.api.entities.ISnowflake;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,11 +116,18 @@ public class GuildLiveScanner extends ListenerAdapter {
      * @param m the JDA message object to ingest
      */
     void processMessage(Message m) {
-        long channelInternalId = channelDao.upsert(m.getChannel().getIdLong(), m.getChannel().getName(), null);
-        long memberInternalId = memberDao.upsert(m.getAuthor().getIdLong(), m.getAuthor().getName(), m.getAuthor().isBot());
+        long channelInternalId = channelDao.upsert(
+                m.getChannel().getIdLong(),
+                m.getChannel().getName(),
+                null);
+        long memberInternalId = memberDao.upsert(
+                m.getAuthor().getIdLong(),
+                m.getAuthor().getName(),
+                m.getAuthor().isBot());
 
         // 1. Insert lean parent event row
-        long eventId = eventDao.insert(new Event(0L, memberInternalId, channelInternalId, "MESSAGE_CREATE", null));
+        long eventId = eventDao.insert(
+                new Event(0L, memberInternalId, channelInternalId, "MESSAGE_CREATE", null));
 
         // 2. Build and upsert the normalized message_events row
         long messageEventId = upsertMessageEvent(m, eventId);
@@ -135,40 +143,7 @@ public class GuildLiveScanner extends ListenerAdapter {
 
     @SuppressWarnings("null")
     private long upsertMessageEvent(Message m, long eventId) {
-        var mentions = m.getMentions();
-        var referencedMessage = m.getReferencedMessage();
-        var timeEdited = m.getTimeEdited();
-        var content = m.getContentRaw();
-
-        MessageEvent me = new MessageEvent(
-                0L,
-                eventId,
-                m.getIdLong(),
-                m.getFlagsRaw(),
-                content != null ? content.length() : 0,
-                m.getType().getId(),
-                m.getAttachments().size(),
-                m.getReactions().stream().mapToInt(r -> r.getCount()).sum(),
-                mentions.getUsers().size(),
-                mentions.getRoles().size(),
-                mentions.getChannels().size(),
-                m.getEmbeds().size(),
-                content,
-                referencedMessage != null ? referencedMessage.getIdLong() : null,
-                timeEdited != null ? LocalDateTime.ofInstant(timeEdited.toInstant(), ZoneOffset.UTC) : null,
-                null,
-                referencedMessage != null,
-                m.getStartedThread() != null,
-                !m.getAttachments().isEmpty(),
-                mentions.mentionsEveryone(),
-                m.isTTS(),
-                m.isPinned(),
-                !m.getStickers().isEmpty(),
-                m.getPoll() != null,
-                m.isVoiceMessage(),
-                m.getAuthor().isBot()
-        );
-
+        final MessageEvent me = MessageEvent.fromDiscord(eventId, m);
         return messageEventDao.upsert(me);
     }
 
@@ -188,19 +163,10 @@ public class GuildLiveScanner extends ListenerAdapter {
 
         messageAttachmentDao.deleteByMessageEventId(messageEventId);
 
-        List<MessageAttachment> attachments = m.getAttachments().stream()
-                .map(a -> new MessageAttachment(
-                        0L,
-                        messageEventId,
-                        a.getIdLong(),
-                        a.getFileName(),
-                        a.getDescription(),
-                        a.getContentType(),
-                        a.getSize(),
-                        a.getWidth(),
-                        a.getHeight(),
-                        a.getDuration() > 0 ? (double) a.getDuration() : null
-                ))
+        List<MessageAttachment> attachments = m
+                .getAttachments()
+                .stream()
+                .map(a -> MessageAttachment.fromDiscord(messageEventId, a))
                 .toList();
 
         messageAttachmentDao.insertBatch(attachments);
@@ -222,15 +188,7 @@ public class GuildLiveScanner extends ListenerAdapter {
         messageReactionDao.deleteByMessageEventId(messageEventId);
 
         List<MessageReaction> reactions = m.getReactions().stream()
-                .map(r -> new MessageReaction(
-                        0L,
-                        messageEventId,
-                        r.getEmoji().getName(),
-                        r.getEmoji().getType() == Emoji.Type.CUSTOM
-                                ? r.getEmoji().asCustom().getIdLong() : null,
-                        r.getCount(),
-                        r.hasCount() ? r.getCount(ReactionType.SUPER) : 0
-                ))
+                .map(r -> MessageReaction.fromDiscord(messageEventId, r))
                 .toList();
 
         messageReactionDao.insertBatch(reactions);
@@ -271,7 +229,7 @@ public class GuildLiveScanner extends ListenerAdapter {
         // Detect role changes by diffing stored vs. current
         List<Long> storedRoles = memberRoleDao.findRolesByMemberId(memberId);
         Set<Long> currentRoleExtIds = member.getRoles().stream()
-                .map(r -> r.getIdLong())
+                .map(ISnowflake::getIdLong)
                 .collect(Collectors.toSet());
 
         Set<Long> storedSet = Set.copyOf(storedRoles);
@@ -285,7 +243,8 @@ public class GuildLiveScanner extends ListenerAdapter {
 
         if (!added.isEmpty() || !removed.isEmpty()) {
             // Write the parent event row
-            long eventId = eventDao.insert(new Event(0L, memberId, null, "MEMBER_ROLE_CHANGE", null));
+            long eventId = eventDao.insert(
+                    new Event(0L, memberId, null, "MEMBER_ROLE_CHANGE", null));
 
             // Write the role change detail
             String addedStr = added.stream().map(String::valueOf).collect(Collectors.joining(","));

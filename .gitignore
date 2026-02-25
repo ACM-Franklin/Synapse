@@ -50,3 +50,6 @@ nb-configuration.xml
 # Local docs
 /docs/javadoc/
 .github/copilot-instructions.md
+
+# Synapse
+synapse.sqlite

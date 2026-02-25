@@ -49,21 +49,21 @@ public class SynapseBot {
      * @param discordToken              the Discord bot token (from discord.token property)
      * @param guildHistoricalScanner    scanner for backfilling historical guild data
      * @param guildLiveScanner          scanner for live Discord events (guild members, messages, etc.)
-     * @param historicalScanEnabled     whether to run a full historical scan on startup
+     * @param scanHistorical            whether to run a full historical scan on startup
      *                                  (from historical.scan.enabled property, default false)
      * @param guildId                   the guild ID to scan historically, if enabled
      *                                  (from guild.id property, default 0)
      */
     public SynapseBot(
-            @ConfigProperty(name = "discord.token") String discordToken,
+            @ConfigProperty(name = "synapse.discord.token") String discordToken,
             GuildHistoricalScanner guildHistoricalScanner,
             GuildLiveScanner guildLiveScanner,
-            @ConfigProperty(name = "historical.scan.enabled", defaultValue = "false") boolean historicalScanEnabled,
-            @ConfigProperty(name = "guild.id", defaultValue = "0") long guildId) {
+            @ConfigProperty(name = "synapse.discord.scan-historical", defaultValue = "false") boolean scanHistorical,
+            @ConfigProperty(name = "synapse.discord.guild.id", defaultValue = "0") long guildId) {
         this.discordToken = discordToken;
         this.guildHistoricalScanner = guildHistoricalScanner;
         this.guildLiveScanner = guildLiveScanner;
-        this.historicalScanEnabled = historicalScanEnabled;
+        this.historicalScanEnabled = scanHistorical;
         this.guildId = guildId;
     }
 

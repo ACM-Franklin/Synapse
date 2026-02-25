@@ -1,6 +1,9 @@
 package edu.franklin.acm.synapse.activity.message;
 
+import net.dv8tion.jda.api.entities.Message;
+
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * Normalized representation of a Discord message in the Event Lake. One row per
@@ -34,4 +37,39 @@ public record MessageEvent(
         boolean isVoiceMessage,
         boolean authorIsBot) {
 
+    public static MessageEvent fromDiscord(long eventId, Message m) {
+        final var mentions = m.getMentions();
+        final var referencedMessage = m.getReferencedMessage();
+        final var timeEdited = m.getTimeEdited();
+        final var content = m.getContentRaw();
+
+        return new MessageEvent(
+                0L,
+                eventId,
+                m.getIdLong(),
+                m.getFlagsRaw(),
+                content.length(),
+                m.getType().getId(),
+                m.getAttachments().size(),
+                m.getReactions().stream().mapToInt(r -> r.getCount()).sum(),
+                mentions.getUsers().size(),
+                mentions.getRoles().size(),
+                mentions.getChannels().size(),
+                m.getEmbeds().size(),
+                content,
+                referencedMessage != null ? referencedMessage.getIdLong() : null,
+                timeEdited != null ? LocalDateTime.ofInstant(timeEdited.toInstant(), ZoneOffset.UTC) : null,
+                null,
+                referencedMessage != null,
+                m.getStartedThread() != null,
+                !m.getAttachments().isEmpty(),
+                mentions.mentionsEveryone(),
+                m.isTTS(),
+                m.isPinned(),
+                !m.getStickers().isEmpty(),
+                m.getPoll() != null,
+                m.isVoiceMessage(),
+                m.getAuthor().isBot()
+        );
+    }
 }
