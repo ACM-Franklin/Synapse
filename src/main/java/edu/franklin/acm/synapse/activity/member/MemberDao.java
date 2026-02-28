@@ -90,4 +90,40 @@ public interface MemberDao {
      */
     @SqlUpdate("UPDATE members SET is_active = 0, updated_at = CURRENT_TIMESTAMP")
     void deactivateAll();
+
+    @SqlUpdate("UPDATE members SET p_currency = p_currency + :amount, updated_at = CURRENT_TIMESTAMP WHERE id = :memberId")
+    void incrementPCurrency(@Bind("memberId") long memberId, @Bind("amount") int amount);
+
+    @SqlUpdate("UPDATE members SET s_currency = s_currency + :amount, updated_at = CURRENT_TIMESTAMP WHERE id = :memberId")
+    void incrementSCurrency(@Bind("memberId") long memberId, @Bind("amount") int amount);
+
+    @SqlQuery("SELECT p_currency FROM members WHERE id = :memberId")
+    Integer findPCurrencyOrNull(@Bind("memberId") long memberId);
+
+    @SqlQuery("SELECT s_currency FROM members WHERE id = :memberId")
+    Integer findSCurrencyOrNull(@Bind("memberId") long memberId);
+
+    @SqlQuery("SELECT premium_since IS NOT NULL FROM members WHERE id = :memberId")
+    Boolean isBoostingOrNull(@Bind("memberId") long memberId);
+
+    default int findPCurrency(long memberId) {
+        Integer val = findPCurrencyOrNull(memberId);
+        return val != null ? val : 0;
+    }
+
+    default int findSCurrency(long memberId) {
+        Integer val = findSCurrencyOrNull(memberId);
+        return val != null ? val : 0;
+    }
+
+    default boolean isBoosting(long memberId) {
+        Boolean val = isBoostingOrNull(memberId);
+        return val != null && val;
+    }
+
+    @SqlQuery("SELECT joined_at FROM members WHERE id = :memberId")
+    String findJoinedAt(@Bind("memberId") long memberId);
+
+    @SqlQuery("SELECT ext_id FROM members WHERE id = :memberId")
+    Long findExtIdById(@Bind("memberId") long memberId);
 }

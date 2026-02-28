@@ -15,10 +15,10 @@ public interface MessageAttachmentDao {
 
     @SqlUpdate("""
         INSERT INTO message_attachments (
-            message_event_id, ext_id, filename, description,
+            message_id, ext_id, filename, description,
             content_type, size, width, height, duration_secs
         ) VALUES (
-            :messageEventId, :extId, :filename, :description,
+            :messageId, :extId, :filename, :description,
             :contentType, :size, :width, :height, :durationSecs
         )
         ON CONFLICT (ext_id) DO NOTHING
@@ -27,10 +27,10 @@ public interface MessageAttachmentDao {
 
     @SqlBatch("""
         INSERT INTO message_attachments (
-            message_event_id, ext_id, filename, description,
+            message_id, ext_id, filename, description,
             content_type, size, width, height, duration_secs
         ) VALUES (
-            :messageEventId, :extId, :filename, :description,
+            :messageId, :extId, :filename, :description,
             :contentType, :size, :width, :height, :durationSecs
         )
         ON CONFLICT (ext_id) DO NOTHING
@@ -39,7 +39,7 @@ public interface MessageAttachmentDao {
 
     @SqlUpdate("""
         DELETE FROM message_attachments
-        WHERE message_event_id = :messageEventId
+        WHERE message_id = :messageId
         """)
-    void deleteByMessageEventId(@Bind("messageEventId") long messageEventId);
+    void deleteByMessageId(@Bind("messageId") long messageId);
 }

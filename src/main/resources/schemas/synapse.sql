@@ -1,15 +1,14 @@
--- ============================================================================
 -- Synapse Schema — Single-Guild Model
--- ============================================================================
--- One instance of Synapse = one guild. The guild metadata lives in a single
--- config row. Everything else is implicitly scoped to this guild.
 --
+-- One instance = one guild. All data is implicitly scoped to this guild.
 -- Design principles:
---   * No JSON blobs. All queryable data lives in real SQL columns.
---   * Events are a lean parent table. Child tables hold type-specific data.
---   * Message edits UPSERT — only the current state matters.
---   * Rewards are derived by the rule engine, never stored on events.
--- ============================================================================
+--   No JSON. All queryable data lives in real SQL columns.
+--   Events are a lean parent table. Child tables hold type-specific data.
+--   Message edits UPSERT — only the current state is kept, no edit history.
+--   Rewards are derived by the rule engine, never stored on events.
+-- Migration is not required when booting fresh. The schema is always
+-- re-applied idempotently. Nuclear overwrite of any existing database
+-- file is safe during development.
 
 -- Tracks schema migrations applied to this database.
 CREATE TABLE IF NOT EXISTS migrations (
@@ -28,9 +27,22 @@ CREATE TABLE IF NOT EXISTS guild_metadata (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Bot uptime / heartbeat tracking.
-CREATE TABLE IF NOT EXISTS bot_statistics (
-    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Operational state for this Synapse instance.
+CREATE TABLE IF NOT EXISTS synapse_statistics (
+    id                  INTEGER PRIMARY KEY CHECK (id = 1),
+    started_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_reconciled_at  TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Runtime admin-configurable settings. Columns will be extended as the settings design matures.
+CREATE TABLE IF NOT EXISTS synapse_settings (
+    id                      INTEGER PRIMARY KEY CHECK (id = 1),
+    primary_currency_name   VARCHAR NOT NULL DEFAULT 'Coins',
+    secondary_currency_name VARCHAR NOT NULL DEFAULT 'Tokens',
+    admin_role_ext_ids      TEXT,
+    created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Discord channel categories.
@@ -42,20 +54,19 @@ CREATE TABLE IF NOT EXISTS categories (
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Discord text channels.
+-- Discord channels. type stores the JDA ChannelType name (TEXT, VOICE, STAGE, FORUM, NEWS, etc.).
 CREATE TABLE IF NOT EXISTS channels (
     id          INTEGER PRIMARY KEY,
     ext_id      BIGINT NOT NULL UNIQUE,
     category_id BIGINT DEFAULT NULL,
     name        VARCHAR NOT NULL,
+    type        VARCHAR NOT NULL,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories (id)
 );
 
 -- Guild members.
--- Live scanner maintains currency for name, avatar_hash, pending, nickname.
--- joined_at and premium_since are captured at first-seen and updated on member events.
 CREATE TABLE IF NOT EXISTS members (
     id              INTEGER PRIMARY KEY,
     ext_id          BIGINT NOT NULL UNIQUE,
@@ -75,8 +86,7 @@ CREATE TABLE IF NOT EXISTS members (
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Junction table for member roles. Current snapshot — updated on GUILD_MEMBER_UPDATE.
--- Used to diff role changes for role transition events.
+-- Current role snapshot per member. Updated on GUILD_MEMBER_UPDATE and reconciliation.
 CREATE TABLE IF NOT EXISTS member_roles (
     member_id   INTEGER NOT NULL,
     role_ext_id BIGINT  NOT NULL,
@@ -111,11 +121,7 @@ CREATE TABLE IF NOT EXISTS seasonal_member_statistics (
     UNIQUE      (member_id, season_id)
 );
 
--- ============================================================================
--- Event Lake — Lean Parent Table
--- ============================================================================
--- Every Discord event ingested by either scanner lands here.
--- No JSON. No currency columns. Type-specific child tables carry the detail.
+-- Every Discord event ingested by either scanner. No JSON. Child tables carry type-specific detail.
 CREATE TABLE IF NOT EXISTS events (
     id          INTEGER PRIMARY KEY,
     member_id   BIGINT NOT NULL,
@@ -126,17 +132,13 @@ CREATE TABLE IF NOT EXISTS events (
     FOREIGN KEY (channel_id) REFERENCES channels (id)
 );
 
-CREATE INDEX IF NOT EXISTS events_member_id_idx ON events (member_id);
+CREATE INDEX IF NOT EXISTS events_member_id_idx  ON events (member_id);
 CREATE INDEX IF NOT EXISTS events_channel_id_idx ON events (channel_id);
 CREATE INDEX IF NOT EXISTS events_event_type_idx ON events (event_type);
 CREATE INDEX IF NOT EXISTS events_created_at_idx ON events (created_at);
 
--- ============================================================================
--- Message Events — Normalized child of events
--- ============================================================================
--- One row per message. Edits UPSERT (ON CONFLICT ext_id) so only current
--- state is stored. No edit history — deliberately.
-CREATE TABLE IF NOT EXISTS message_events (
+-- Current state of each message. Edits UPSERT on ext_id — no edit history is kept.
+CREATE TABLE IF NOT EXISTS messages (
     id                          INTEGER PRIMARY KEY,
     event_id                    BIGINT NOT NULL,
     ext_id                      BIGINT NOT NULL UNIQUE,
@@ -166,50 +168,48 @@ CREATE TABLE IF NOT EXISTS message_events (
     FOREIGN KEY (event_id) REFERENCES events (id)
 );
 
-CREATE INDEX IF NOT EXISTS message_events_ext_id_idx ON message_events (ext_id);
-CREATE INDEX IF NOT EXISTS message_events_event_id_idx ON message_events (event_id);
-CREATE INDEX IF NOT EXISTS message_events_type_idx ON message_events (type);
+CREATE INDEX IF NOT EXISTS messages_ext_id_idx   ON messages (ext_id);
+CREATE INDEX IF NOT EXISTS messages_event_id_idx ON messages (event_id);
+CREATE INDEX IF NOT EXISTS messages_type_idx     ON messages (type);
 
--- ============================================================================
--- Message Attachments — one row per attachment on a message
--- ============================================================================
+-- Attachments belonging to a message.
 CREATE TABLE IF NOT EXISTS message_attachments (
-    id                  INTEGER PRIMARY KEY,
-    message_event_id    BIGINT NOT NULL,
-    ext_id              BIGINT NOT NULL UNIQUE,
-    filename            VARCHAR NOT NULL,
-    description         TEXT,
-    content_type        VARCHAR,
-    size                INTEGER NOT NULL DEFAULT 0,
-    width               INTEGER NOT NULL DEFAULT 0,
-    height              INTEGER NOT NULL DEFAULT 0,
-    duration_secs       REAL,
-    FOREIGN KEY (message_event_id) REFERENCES message_events (id)
+    id              INTEGER PRIMARY KEY,
+    message_id      BIGINT NOT NULL,
+    ext_id          BIGINT NOT NULL UNIQUE,
+    filename        VARCHAR NOT NULL,
+    description     TEXT,
+    content_type    VARCHAR,
+    size            INTEGER NOT NULL DEFAULT 0,
+    width           INTEGER NOT NULL DEFAULT 0,
+    height          INTEGER NOT NULL DEFAULT 0,
+    duration_secs   REAL,
+    FOREIGN KEY (message_id) REFERENCES messages (id)
 );
 
-CREATE INDEX IF NOT EXISTS message_attachments_msg_idx ON message_attachments (message_event_id);
+CREATE INDEX IF NOT EXISTS message_attachments_msg_idx ON message_attachments (message_id);
 
--- ============================================================================
--- Message Reactions — one row per distinct emoji reaction on a message
--- ============================================================================
+-- Emoji reactions on a message. One row per distinct emoji.
 CREATE TABLE IF NOT EXISTS message_reactions (
-    id                  INTEGER PRIMARY KEY,
-    message_event_id    BIGINT NOT NULL,
-    emoji_name          VARCHAR NOT NULL,
-    emoji_ext_id        BIGINT,
-    count               INTEGER NOT NULL DEFAULT 0,
-    burst_count         INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (message_event_id) REFERENCES message_events (id),
-    UNIQUE (message_event_id, emoji_name, emoji_ext_id)
+    id              INTEGER PRIMARY KEY,
+    message_id      BIGINT NOT NULL,
+    emoji_name      VARCHAR NOT NULL,
+    emoji_ext_id    BIGINT,
+    count           INTEGER NOT NULL DEFAULT 0,
+    burst_count     INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (message_id) REFERENCES messages (id)
 );
 
-CREATE INDEX IF NOT EXISTS message_reactions_msg_idx ON message_reactions (message_event_id);
+-- Expression index so COALESCE(emoji_ext_id, 0) collapses NULL → 0, treating
+-- standard (non-custom) emoji as equal for uniqueness. Required because SQLite
+-- treats NULLs as distinct in plain UNIQUE constraints. The DAO ON CONFLICT
+-- clause mirrors this expression exactly.
+CREATE UNIQUE INDEX IF NOT EXISTS message_reactions_uq
+    ON message_reactions (message_id, emoji_name, COALESCE(emoji_ext_id, 0));
 
--- ============================================================================
--- Member Role Change Events — child of events for MEMBER_ROLE_CHANGE type
--- ============================================================================
--- Captures a diff: which roles were added and which were removed.
--- Stored as comma-separated ext_id lists (simple, queryable enough for our needs).
+CREATE INDEX IF NOT EXISTS message_reactions_msg_idx ON message_reactions (message_id);
+
+-- Role change detail for MEMBER_ROLE_CHANGE events. Stored as comma-separated ext_id lists.
 CREATE TABLE IF NOT EXISTS member_role_change_events (
     id              INTEGER PRIMARY KEY,
     event_id        BIGINT NOT NULL,
@@ -218,12 +218,8 @@ CREATE TABLE IF NOT EXISTS member_role_change_events (
     FOREIGN KEY (event_id) REFERENCES events (id)
 );
 
--- ============================================================================
--- Voice Sessions — tracks time spent in voice/stage channels
--- ============================================================================
--- One row per voice connection. left_at is NULL while connected.
--- Startup reconciliation closes orphaned sessions (left_at IS NULL) using
--- guild.getVoiceStates() to check who's actually still connected.
+-- Voice session per member connection. left_at is NULL while connected.
+-- Startup reconciliation closes orphaned sessions and re-opens for currently connected members.
 CREATE TABLE IF NOT EXISTS voice_sessions (
     id              INTEGER PRIMARY KEY,
     event_id        BIGINT NOT NULL,
@@ -238,4 +234,59 @@ CREATE TABLE IF NOT EXISTS voice_sessions (
 );
 
 CREATE INDEX IF NOT EXISTS voice_sessions_member_idx ON voice_sessions (member_id);
-CREATE INDEX IF NOT EXISTS voice_sessions_open_idx ON voice_sessions (left_at) WHERE left_at IS NULL;
+CREATE INDEX IF NOT EXISTS voice_sessions_open_idx   ON voice_sessions (left_at) WHERE left_at IS NULL;
+
+-- Rules: named evaluation targets with event scoping, cooldown, and toggles.
+CREATE TABLE IF NOT EXISTS rules (
+    id                INTEGER PRIMARY KEY,
+    name              VARCHAR NOT NULL UNIQUE,
+    description       TEXT,
+    event_type        VARCHAR NOT NULL,
+    enabled           INTEGER NOT NULL DEFAULT 0,
+    applies_live      INTEGER NOT NULL DEFAULT 1,
+    applies_historic  INTEGER NOT NULL DEFAULT 0,
+    cooldown_seconds  INTEGER NOT NULL DEFAULT 0,
+    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Parameterized predicates attached to a rule. All must pass (AND logic).
+CREATE TABLE IF NOT EXISTS rule_predicates (
+    id              INTEGER PRIMARY KEY,
+    rule_id         BIGINT NOT NULL,
+    predicate_type  VARCHAR NOT NULL,
+    parameters      TEXT,
+    sort_order      INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (rule_id) REFERENCES rules (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS rule_predicates_rule_idx ON rule_predicates (rule_id);
+
+-- Outcomes dispatched when a rule fires. One rule can have many outcomes.
+CREATE TABLE IF NOT EXISTS rule_outcomes (
+    id          INTEGER PRIMARY KEY,
+    rule_id     BIGINT NOT NULL,
+    type        VARCHAR NOT NULL,
+    p_currency  INTEGER,
+    s_currency  INTEGER,
+    parameters  TEXT,
+    FOREIGN KEY (rule_id) REFERENCES rules (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS rule_outcomes_rule_idx ON rule_outcomes (rule_id);
+
+-- Deduplication and cooldown log. One row per rule+event pair that fired.
+CREATE TABLE IF NOT EXISTS rule_evaluations (
+    id         INTEGER PRIMARY KEY,
+    rule_id    BIGINT NOT NULL,
+    event_id   BIGINT NOT NULL,
+    member_id  BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (rule_id, event_id),
+    FOREIGN KEY (rule_id)  REFERENCES rules (id),
+    FOREIGN KEY (event_id) REFERENCES events (id),
+    FOREIGN KEY (member_id) REFERENCES members (id)
+);
+
+CREATE INDEX IF NOT EXISTS rule_evaluations_rule_member_idx ON rule_evaluations (rule_id, member_id);
+CREATE INDEX IF NOT EXISTS rule_evaluations_event_idx ON rule_evaluations (event_id);

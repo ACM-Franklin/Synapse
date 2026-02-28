@@ -19,7 +19,7 @@ public interface MessageEventDao {
      * @return the internal row ID (auto-generated)
      */
     @SqlQuery("""
-            INSERT INTO message_events (
+            INSERT INTO messages (
                 event_id, ext_id, content, content_length, type,
                 is_reply, referenced_message_ext_id, spawned_thread,
                 edited_at, has_attachments, attachment_count, reaction_count,
@@ -62,6 +62,6 @@ public interface MessageEventDao {
      * @param extId the Discord message ID (snowflake)
      * @return the internal row ID, or {@code null} if not found
      */
-    @SqlQuery("SELECT id FROM message_events WHERE ext_id = :extId")
+    @SqlQuery("SELECT id FROM messages WHERE ext_id = :extId")
     Long findIdByExtId(@Bind("extId") long extId);
 }

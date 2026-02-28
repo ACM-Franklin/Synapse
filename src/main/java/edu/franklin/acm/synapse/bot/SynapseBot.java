@@ -92,6 +92,20 @@ public class SynapseBot {
 
         jda.awaitReady();
 
+        // Reconcile database state with live guild
+        if (guildId > 0) {
+            var guild = jda.getGuildById(guildId);
+            if (guild != null) {
+                try {
+                    guildLiveScanner.reconcile(guild);
+                } catch (Exception e) {
+                    log.error("Startup reconciliation failed for guild {}", guildId, e);
+                }
+            } else {
+                log.warn("Cannot reconcile: guild {} not available to this bot", guildId);
+            }
+        }
+
         if (historicalScanEnabled) {
             performHistoricalScan();
         }

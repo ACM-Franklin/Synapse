@@ -4,6 +4,7 @@ import edu.franklin.acm.synapse.activity.migrations.MigrationDao;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
+import edu.franklin.acm.synapse.activity.channel.CategoryDao;
 import edu.franklin.acm.synapse.activity.channel.ChannelDao;
 import edu.franklin.acm.synapse.activity.guild.GuildMetadataDao;
 import edu.franklin.acm.synapse.activity.member.MemberDao;
@@ -11,6 +12,10 @@ import edu.franklin.acm.synapse.activity.member.MemberRoleDao;
 import edu.franklin.acm.synapse.activity.message.MessageAttachmentDao;
 import edu.franklin.acm.synapse.activity.message.MessageEventDao;
 import edu.franklin.acm.synapse.activity.message.MessageReactionDao;
+import edu.franklin.acm.synapse.activity.rules.RuleDao;
+import edu.franklin.acm.synapse.activity.rules.RuleEvaluationDao;
+import edu.franklin.acm.synapse.activity.rules.RuleOutcomeDao;
+import edu.franklin.acm.synapse.activity.rules.RulePredicateDao;
 import edu.franklin.acm.synapse.activity.voice.VoiceSessionDao;
 import io.agroal.api.AgroalDataSource;
 import jakarta.annotation.PostConstruct;
@@ -73,6 +78,12 @@ public class DaoProducer {
 
     @Produces
     @ApplicationScoped
+    public CategoryDao categoryDao() {
+        return jdbi.onDemand(CategoryDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
     public ChannelDao channelDao() {
         return jdbi.onDemand(ChannelDao.class);
     }
@@ -111,5 +122,35 @@ public class DaoProducer {
     @ApplicationScoped
     public MigrationDao migrationDao() {
         return jdbi.onDemand(MigrationDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public RuleDao ruleDao() {
+        return jdbi.onDemand(RuleDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public RulePredicateDao rulePredicateDao() {
+        return jdbi.onDemand(RulePredicateDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public RuleOutcomeDao ruleOutcomeDao() {
+        return jdbi.onDemand(RuleOutcomeDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public RuleEvaluationDao ruleEvaluationDao() {
+        return jdbi.onDemand(RuleEvaluationDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public SeasonDao seasonDao() {
+        return jdbi.onDemand(SeasonDao.class);
     }
 }

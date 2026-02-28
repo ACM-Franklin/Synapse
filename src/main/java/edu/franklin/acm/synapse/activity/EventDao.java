@@ -43,4 +43,10 @@ public interface EventDao {
             LIMIT :limit
             """)
     List<Event> findRecentByMember(@Bind("memberId") long memberId, @Bind("limit") int limit);
+
+    @SqlQuery("""
+            SELECT COUNT(*) FROM events
+            WHERE member_id = :memberId AND event_type = :eventType
+            """)
+    int countByMemberAndType(@Bind("memberId") long memberId, @Bind("eventType") String eventType);
 }

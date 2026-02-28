@@ -1,7 +1,11 @@
 package edu.franklin.acm.synapse.activity.migrations;
 
-import io.quarkus.runtime.Startup;
-import jakarta.inject.Singleton;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.util.List;
+
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.UnableToCreateStatementException;
@@ -9,9 +13,8 @@ import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.net.URL;
-import java.util.List;
+import io.quarkus.runtime.Startup;
+import jakarta.inject.Singleton;
 
 /**
  * Singleton Bean that runs on startup. This bean manages the execution and state tracking
@@ -47,11 +50,16 @@ public class MigrationManager implements Runnable {
         this.migrationFiles = getMigrationFiles(migrations.endsWith("/") ? migrations : migrations + "/");
 
         if (doMigrations) {
-            run();
+            runMigrations();
         }
     }
 
+    @Override
     public void run() {
+        runMigrations();
+    }
+
+    private void runMigrations() {
         runResource(schema, true);
 
         final var previousMigrations = migrations.getAll();
@@ -106,8 +114,10 @@ public class MigrationManager implements Runnable {
             throw new IllegalStateException(e);
         } catch (UnableToCreateStatementException e) {
             log.error("Underlying issue in DataSource: {}", e.getMessage());
+            throw new IllegalStateException("Migration failed due to DataSource issue: " + resourcePath, e);
         } catch (UnableToExecuteStatementException e) {
             log.error("Migration file \"{}\" contains invalid SQL: {}", resourcePath, e.getMessage());
+            throw new IllegalStateException("Migration failed with invalid SQL: " + resourcePath, e);
         } finally {
             if (!forced) migrations.commit(resourcePath, success);
         }

@@ -48,8 +48,9 @@ nb-configuration.xml
 .serena/
 
 # Local docs
-/docs/javadoc/
+local_docs/
 .github/copilot-instructions.md
 
 # Synapse
 synapse.sqlite
+/old-synapse/

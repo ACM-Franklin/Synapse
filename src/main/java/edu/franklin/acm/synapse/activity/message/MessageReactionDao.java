@@ -16,11 +16,11 @@ public interface MessageReactionDao {
 
     @SqlBatch("""
             INSERT INTO message_reactions (
-                message_event_id, emoji_name, emoji_ext_id, count, burst_count
+                message_id, emoji_name, emoji_ext_id, count, burst_count
             ) VALUES (
-                :messageEventId, :emojiName, :emojiExtId, :count, :burstCount
+                :messageId, :emojiName, :emojiExtId, :count, :burstCount
             )
-            ON CONFLICT (message_event_id, emoji_name, COALESCE(emoji_ext_id, 0))
+            ON CONFLICT (message_id, emoji_name, COALESCE(emoji_ext_id, 0))
             DO UPDATE SET count = EXCLUDED.count, burst_count = EXCLUDED.burst_count
             """)
     void insertBatch(@BindMethods List<MessageReaction> reactions);
@@ -32,15 +32,15 @@ public interface MessageReactionDao {
      */
     @SqlUpdate("""
             INSERT INTO message_reactions (
-                message_event_id, emoji_name, emoji_ext_id, count, burst_count
+                message_id, emoji_name, emoji_ext_id, count, burst_count
             ) VALUES (
-                :messageEventId, :emojiName, :emojiExtId, 1, 0
+                :messageId, :emojiName, :emojiExtId, 1, 0
             )
-            ON CONFLICT (message_event_id, emoji_name, COALESCE(emoji_ext_id, 0))
+            ON CONFLICT (message_id, emoji_name, COALESCE(emoji_ext_id, 0))
             DO UPDATE SET count = message_reactions.count + 1
             """)
     void incrementCount(
-            @Bind("messageEventId") long messageEventId,
+            @Bind("messageId") long messageId,
             @Bind("emojiName") String emojiName,
             @Bind("emojiExtId") Long emojiExtId);
 
@@ -52,15 +52,15 @@ public interface MessageReactionDao {
     @SqlUpdate("""
             UPDATE message_reactions
             SET count = MAX(count - 1, 0)
-            WHERE message_event_id = :messageEventId
+            WHERE message_id = :messageId
                 AND emoji_name = :emojiName
                 AND COALESCE(emoji_ext_id, 0) = COALESCE(:emojiExtId, 0)
             """)
     void decrementCount(
-            @Bind("messageEventId") long messageEventId,
+            @Bind("messageId") long messageId,
             @Bind("emojiName") String emojiName,
             @Bind("emojiExtId") Long emojiExtId);
 
-    @SqlUpdate("DELETE FROM message_reactions WHERE message_event_id = :messageEventId")
-    void deleteByMessageEventId(@Bind("messageEventId") long messageEventId);
+    @SqlUpdate("DELETE FROM message_reactions WHERE message_id = :messageId")
+    void deleteByMessageId(@Bind("messageId") long messageId);
 }
