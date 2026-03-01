@@ -6,12 +6,14 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.franklin.acm.synapse.activity.guild.SynapseStatisticsDao;
 import edu.franklin.acm.synapse.scanners.GuildHistoricalScanner;
 import edu.franklin.acm.synapse.scanners.GuildLiveScanner;
 import io.quarkus.runtime.Startup;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
@@ -39,6 +41,8 @@ public class SynapseBot {
     // Event scanners
     private final GuildHistoricalScanner guildHistoricalScanner;
     private final GuildLiveScanner guildLiveScanner;
+
+    @Inject SynapseStatisticsDao statisticsDao;
 
     // Gateway connection (initialized on startup)
     private JDA jda;
@@ -91,6 +95,7 @@ public class SynapseBot {
                 .build();
 
         jda.awaitReady();
+        statisticsDao.recordStartup();
 
         // Reconcile database state with live guild
         if (guildId > 0) {

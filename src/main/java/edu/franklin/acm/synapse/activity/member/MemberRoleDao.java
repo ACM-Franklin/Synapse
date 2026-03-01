@@ -26,27 +26,28 @@ public interface MemberRoleDao {
 
     /**
      * Inserts a single role assignment for a member.
-     * 
-     * <p>Gracefully ignores conflicts (role already assigned).
-     * 
-     * @param memberId  the member's internal ID
-     * @param roleExtId the external role ID (Discord snowflake)
+     *
+     * @param memberId the member's internal ID
+     * @param roleId   the internal role ID (from the {@code roles} table)
      */
     @SqlUpdate("""
-        INSERT INTO member_roles (member_id, role_ext_id)
-        VALUES (:memberId, :roleExtId)
+        INSERT INTO member_roles (member_id, role_id)
+        VALUES (:memberId, :roleId)
         ON CONFLICT DO NOTHING
         """)
-    void insertRole(@Bind("memberId") long memberId, @Bind("roleExtId") long roleExtId);
+    void insertRole(@Bind("memberId") long memberId, @Bind("roleId") long roleId);
 
     /**
-     * Retrieves all roles currently assigned to a member.
-     * 
-     * @param memberId the member's internal ID
-     * @return list of external role IDs (Discord snowflakes)
+     * Returns the external Discord role IDs for a member by joining through
+     * the {@code roles} reference table.
      */
-    @SqlQuery("SELECT role_ext_id FROM member_roles WHERE member_id = :memberId")
-    List<Long> findRolesByMemberId(@Bind("memberId") long memberId);
+    @SqlQuery("""
+        SELECT r.ext_id
+        FROM member_roles mr
+        JOIN roles r ON mr.role_id = r.id
+        WHERE mr.member_id = :memberId
+        """)
+    List<Long> findRoleExtIdsByMemberId(@Bind("memberId") long memberId);
 
     /**
      * Records a role assignment change event.

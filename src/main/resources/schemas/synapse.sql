@@ -9,6 +9,11 @@
 -- Migration is not required when booting fresh. The schema is always
 -- re-applied idempotently. Nuclear overwrite of any existing database
 -- file is safe during development.
+--
+-- Timestamp convention for Discord-origin tables:
+--   created_at  = when the entity was created on Discord (explicit, from JDA)
+--   ingested_at = when the row was inserted into this database (DB default)
+--   updated_at  = when the row was last modified in this database (DB default)
 
 -- Tracks schema migrations applied to this database.
 CREATE TABLE IF NOT EXISTS migrations (
@@ -20,11 +25,12 @@ CREATE TABLE IF NOT EXISTS migrations (
 
 -- Metadata about the guild this instance manages.
 CREATE TABLE IF NOT EXISTS guild_metadata (
-    id         INTEGER PRIMARY KEY CHECK (id = 1),
-    ext_id     BIGINT NOT NULL,
-    name       VARCHAR NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id          INTEGER PRIMARY KEY CHECK (id = 1),
+    ext_id      BIGINT NOT NULL,
+    name        VARCHAR NOT NULL,
+    created_at  TIMESTAMP,
+    ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Operational state for this Synapse instance.
@@ -50,7 +56,9 @@ CREATE TABLE IF NOT EXISTS categories (
     id          INTEGER PRIMARY KEY,
     ext_id      BIGINT NOT NULL UNIQUE,
     name        VARCHAR NOT NULL,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active   INTEGER NOT NULL DEFAULT 1,
+    created_at  TIMESTAMP,
+    ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -61,9 +69,61 @@ CREATE TABLE IF NOT EXISTS channels (
     category_id BIGINT DEFAULT NULL,
     name        VARCHAR NOT NULL,
     type        VARCHAR NOT NULL,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active   INTEGER NOT NULL DEFAULT 1,
+    created_at  TIMESTAMP,
+    ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories (id)
+);
+
+-- Discord threads: forum posts, text-channel threads, news-channel threads.
+CREATE TABLE IF NOT EXISTS threads (
+    id                      INTEGER PRIMARY KEY,
+    ext_id                  BIGINT NOT NULL UNIQUE,
+    channel_id              BIGINT NOT NULL,
+    owner_ext_id            BIGINT,
+    name                    VARCHAR NOT NULL,
+    type                    VARCHAR NOT NULL,
+    is_archived             INTEGER NOT NULL DEFAULT 0,
+    is_locked               INTEGER NOT NULL DEFAULT 0,
+    is_pinned               INTEGER NOT NULL DEFAULT 0,
+    message_count           INTEGER NOT NULL DEFAULT 0,
+    slowmode                INTEGER NOT NULL DEFAULT 0,
+    auto_archive_duration   INTEGER NOT NULL DEFAULT 0,
+    is_active               INTEGER NOT NULL DEFAULT 1,
+    created_at              TIMESTAMP,
+    ingested_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (channel_id) REFERENCES channels (id)
+);
+
+CREATE INDEX IF NOT EXISTS threads_channel_id_idx ON threads (channel_id);
+CREATE INDEX IF NOT EXISTS threads_type_idx       ON threads (type);
+
+-- Available tags defined on each ForumChannel.
+CREATE TABLE IF NOT EXISTS forum_tags (
+    id              INTEGER PRIMARY KEY,
+    ext_id          BIGINT NOT NULL UNIQUE,
+    channel_id      BIGINT NOT NULL,
+    name            VARCHAR NOT NULL,
+    emoji_name      VARCHAR,
+    emoji_ext_id    BIGINT,
+    is_moderated    INTEGER NOT NULL DEFAULT 0,
+    created_at      TIMESTAMP,
+    ingested_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (channel_id) REFERENCES channels (id)
+);
+
+CREATE INDEX IF NOT EXISTS forum_tags_channel_id_idx ON forum_tags (channel_id);
+
+-- Junction: which forum tags are applied to a thread (forum post).
+CREATE TABLE IF NOT EXISTS thread_tags (
+    thread_id       BIGINT NOT NULL,
+    forum_tag_id    BIGINT NOT NULL,
+    PRIMARY KEY (thread_id, forum_tag_id),
+    FOREIGN KEY (thread_id)    REFERENCES threads (id),
+    FOREIGN KEY (forum_tag_id) REFERENCES forum_tags (id)
 );
 
 -- Guild members.
@@ -86,12 +146,23 @@ CREATE TABLE IF NOT EXISTS members (
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Discord guild roles. Provides human-readable names for role snowflake IDs.
+CREATE TABLE IF NOT EXISTS roles (
+    id          INTEGER PRIMARY KEY,
+    ext_id      BIGINT NOT NULL UNIQUE,
+    name        VARCHAR NOT NULL,
+    is_active   INTEGER NOT NULL DEFAULT 1,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Current role snapshot per member. Updated on GUILD_MEMBER_UPDATE and reconciliation.
 CREATE TABLE IF NOT EXISTS member_roles (
     member_id   INTEGER NOT NULL,
-    role_ext_id BIGINT  NOT NULL,
-    PRIMARY KEY (member_id, role_ext_id),
-    FOREIGN KEY (member_id) REFERENCES members (id)
+    role_id     INTEGER NOT NULL,
+    PRIMARY KEY (member_id, role_id),
+    FOREIGN KEY (member_id) REFERENCES members (id),
+    FOREIGN KEY (role_id)   REFERENCES roles (id)
 );
 
 -- Seasonal time windows for competitive periods.
@@ -127,7 +198,8 @@ CREATE TABLE IF NOT EXISTS events (
     member_id   BIGINT NOT NULL,
     channel_id  BIGINT,
     event_type  VARCHAR NOT NULL,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at  TIMESTAMP,
+    ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (member_id)  REFERENCES members (id),
     FOREIGN KEY (channel_id) REFERENCES channels (id)
 );
@@ -142,6 +214,7 @@ CREATE TABLE IF NOT EXISTS messages (
     id                          INTEGER PRIMARY KEY,
     event_id                    BIGINT NOT NULL,
     ext_id                      BIGINT NOT NULL UNIQUE,
+    thread_id                   BIGINT DEFAULT NULL,
     content                     TEXT,
     content_length              INTEGER NOT NULL DEFAULT 0,
     type                        INTEGER NOT NULL DEFAULT 0,
@@ -164,13 +237,16 @@ CREATE TABLE IF NOT EXISTS messages (
     is_voice_message            INTEGER NOT NULL DEFAULT 0,
     flags                       BIGINT NOT NULL DEFAULT 0,
     author_is_bot               INTEGER NOT NULL DEFAULT 0,
-    created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (event_id) REFERENCES events (id)
+    created_at                  TIMESTAMP,
+    ingested_at                 TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id)   REFERENCES events (id),
+    FOREIGN KEY (thread_id)  REFERENCES threads (id)
 );
 
-CREATE INDEX IF NOT EXISTS messages_ext_id_idx   ON messages (ext_id);
-CREATE INDEX IF NOT EXISTS messages_event_id_idx ON messages (event_id);
-CREATE INDEX IF NOT EXISTS messages_type_idx     ON messages (type);
+CREATE INDEX IF NOT EXISTS messages_ext_id_idx    ON messages (ext_id);
+CREATE INDEX IF NOT EXISTS messages_event_id_idx  ON messages (event_id);
+CREATE INDEX IF NOT EXISTS messages_type_idx      ON messages (type);
+CREATE INDEX IF NOT EXISTS messages_thread_id_idx ON messages (thread_id);
 
 -- Attachments belonging to a message.
 CREATE TABLE IF NOT EXISTS message_attachments (

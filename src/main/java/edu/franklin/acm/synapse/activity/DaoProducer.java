@@ -1,21 +1,26 @@
 package edu.franklin.acm.synapse.activity;
 
-import edu.franklin.acm.synapse.activity.migrations.MigrationDao;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
 import edu.franklin.acm.synapse.activity.channel.CategoryDao;
 import edu.franklin.acm.synapse.activity.channel.ChannelDao;
 import edu.franklin.acm.synapse.activity.guild.GuildMetadataDao;
+import edu.franklin.acm.synapse.activity.guild.SynapseStatisticsDao;
 import edu.franklin.acm.synapse.activity.member.MemberDao;
 import edu.franklin.acm.synapse.activity.member.MemberRoleDao;
+import edu.franklin.acm.synapse.activity.member.RoleDao;
 import edu.franklin.acm.synapse.activity.message.MessageAttachmentDao;
 import edu.franklin.acm.synapse.activity.message.MessageEventDao;
 import edu.franklin.acm.synapse.activity.message.MessageReactionDao;
+import edu.franklin.acm.synapse.activity.migrations.MigrationDao;
 import edu.franklin.acm.synapse.activity.rules.RuleDao;
 import edu.franklin.acm.synapse.activity.rules.RuleEvaluationDao;
 import edu.franklin.acm.synapse.activity.rules.RuleOutcomeDao;
 import edu.franklin.acm.synapse.activity.rules.RulePredicateDao;
+import edu.franklin.acm.synapse.activity.thread.ForumTagDao;
+import edu.franklin.acm.synapse.activity.thread.ThreadDao;
+import edu.franklin.acm.synapse.activity.thread.ThreadTagDao;
 import edu.franklin.acm.synapse.activity.voice.VoiceSessionDao;
 import io.agroal.api.AgroalDataSource;
 import jakarta.annotation.PostConstruct;
@@ -66,6 +71,12 @@ public class DaoProducer {
 
     @Produces
     @ApplicationScoped
+    public SynapseStatisticsDao synapseStatisticsDao() {
+        return jdbi.onDemand(SynapseStatisticsDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
     public MemberDao memberDao() {
         return jdbi.onDemand(MemberDao.class);
     }
@@ -104,6 +115,12 @@ public class DaoProducer {
     @ApplicationScoped
     public MessageReactionDao messageReactionDao() {
         return jdbi.onDemand(MessageReactionDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public RoleDao roleDao() {
+        return jdbi.onDemand(RoleDao.class);
     }
 
     @Produces
@@ -152,5 +169,23 @@ public class DaoProducer {
     @ApplicationScoped
     public SeasonDao seasonDao() {
         return jdbi.onDemand(SeasonDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public ThreadDao threadDao() {
+        return jdbi.onDemand(ThreadDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public ForumTagDao forumTagDao() {
+        return jdbi.onDemand(ForumTagDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public ThreadTagDao threadTagDao() {
+        return jdbi.onDemand(ThreadTagDao.class);
     }
 }

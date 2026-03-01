@@ -1,5 +1,8 @@
 package edu.franklin.acm.synapse.scanners.shared;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+
 import org.jdbi.v3.core.Jdbi;
 
 import edu.franklin.acm.synapse.activity.Event;
@@ -30,20 +33,23 @@ public class MessagePersistenceService {
      *
      * @param memberInternalId  internal member ID (already upserted by caller)
      * @param channelInternalId internal channel ID (already upserted by caller)
+     * @param threadInternalId  internal thread ID, or {@code null} for non-thread messages
      * @param m                 the JDA message
      * @return the generated event ID
      */
     @SuppressWarnings("null")
-    public long persistMessage(long memberInternalId, long channelInternalId, Message m) {
+    public long persistMessage(long memberInternalId, long channelInternalId, Long threadInternalId, Message m) {
         return jdbi.inTransaction(handle -> {
             EventDao txEvent = handle.attach(EventDao.class);
             MessageEventDao txMsg = handle.attach(MessageEventDao.class);
             MessageAttachmentDao txAtt = handle.attach(MessageAttachmentDao.class);
             MessageReactionDao txRxn = handle.attach(MessageReactionDao.class);
 
+            LocalDateTime discordCreatedAt = LocalDateTime.ofInstant(
+                    m.getTimeCreated().toInstant(), ZoneOffset.UTC);
             long eventId = txEvent.insert(
-                    new Event(0L, memberInternalId, channelInternalId, "MESSAGE_CREATE", null));
-            long messageId = txMsg.upsert(MessageEvent.fromDiscord(eventId, m));
+                    new Event(0L, memberInternalId, channelInternalId, "MESSAGE_CREATE", discordCreatedAt.toString()));
+            long messageId = txMsg.upsert(MessageEvent.fromDiscord(eventId, threadInternalId, m));
 
             if (!m.getAttachments().isEmpty()) {
                 txAtt.deleteByMessageId(messageId);

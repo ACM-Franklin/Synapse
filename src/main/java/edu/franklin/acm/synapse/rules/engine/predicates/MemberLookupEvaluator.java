@@ -74,7 +74,7 @@ public class MemberLookupEvaluator implements PredicateEvaluator {
         if (parametersJson == null) return false;
         JsonNode params = MAPPER.readTree(parametersJson);
         long roleExtId = params.path("role_ext_id").asLong();
-        List<Long> roles = memberRoleDao.findRolesByMemberId(ctx.memberId());
+        List<Long> roles = memberRoleDao.findRoleExtIdsByMemberId(ctx.memberId());
         boolean has = roles.contains(roleExtId);
         return negate != has;
     }

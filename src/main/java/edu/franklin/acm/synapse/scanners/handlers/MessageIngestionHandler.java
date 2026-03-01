@@ -9,9 +9,11 @@ import edu.franklin.acm.synapse.rules.engine.RuleContext;
 import edu.franklin.acm.synapse.rules.engine.RuleEvaluationRequest;
 import edu.franklin.acm.synapse.scanners.shared.ChannelService;
 import edu.franklin.acm.synapse.scanners.shared.MessagePersistenceService;
+import edu.franklin.acm.synapse.scanners.shared.ThreadService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 
 @ApplicationScoped
 public class MessageIngestionHandler {
@@ -20,20 +22,30 @@ public class MessageIngestionHandler {
 
     @Inject MemberDao memberDao;
     @Inject ChannelService channelService;
+    @Inject ThreadService threadService;
     @Inject MessagePersistenceService messagePersistenceService;
 
     @Inject
     jakarta.enterprise.event.Event<RuleEvaluationRequest> ruleEvents;
 
     public void handle(Message m) {
-        long channelInternalId = channelService.upsertChannel(m.getChannel());
+        long channelInternalId;
+        Long threadInternalId = null;
+
+        if (m.getChannel() instanceof ThreadChannel thread) {
+            channelInternalId = channelService.upsertChannel(thread.getParentChannel());
+            threadInternalId = threadService.upsertThread(thread, channelInternalId);
+        } else {
+            channelInternalId = channelService.upsertChannel(m.getChannel());
+        }
+
         long memberInternalId = memberDao.upsert(
                 m.getAuthor().getIdLong(),
                 m.getAuthor().getName(),
                 m.getAuthor().isBot());
 
         long eventId = messagePersistenceService.persistMessage(
-                memberInternalId, channelInternalId, m);
+                memberInternalId, channelInternalId, threadInternalId, m);
 
         log.debug("Ingested live message {} from {}", m.getId(), m.getAuthor().getName());
 
@@ -41,13 +53,17 @@ public class MessageIngestionHandler {
         String attContentType = m.getAttachments().isEmpty() ? null : m.getAttachments().get(0).getContentType();
         RuleContext ctx = RuleContext.forMessage(
                 eventId, memberInternalId, channelInternalId,
-                MessageEvent.fromDiscord(eventId, m),
+                MessageEvent.fromDiscord(eventId, threadInternalId, m),
                 m.getAuthor().getIdLong(),
                 false, null,
                 memberDao.findPCurrency(memberInternalId),
                 memberDao.findSCurrency(memberInternalId),
-                m.getChannel().getIdLong(),
-                m.getChannel().getType().name(),
+                m.getChannel() instanceof ThreadChannel tc
+                        ? tc.getParentChannel().getIdLong()
+                        : m.getChannel().getIdLong(),
+                m.getChannel() instanceof ThreadChannel tc2
+                        ? tc2.getParentChannel().getType().name()
+                        : m.getChannel().getType().name(),
                 null,
                 attFilename, attContentType);
         ruleEvents.fireAsync(new RuleEvaluationRequest(ctx));

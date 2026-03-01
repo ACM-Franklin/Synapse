@@ -20,23 +20,26 @@ public interface MessageEventDao {
      */
     @SqlQuery("""
             INSERT INTO messages (
-                event_id, ext_id, content, content_length, type,
+                event_id, ext_id, thread_id, content, content_length, type,
                 is_reply, referenced_message_ext_id, spawned_thread,
                 edited_at, has_attachments, attachment_count, reaction_count,
                 mention_user_count, mention_role_count, mention_channel_count,
                 mention_everyone, is_tts, is_pinned, has_stickers, has_poll,
-                embed_count, is_voice_message, flags, author_is_bot
+                embed_count, is_voice_message, flags, author_is_bot,
+                created_at
             ) VALUES (
-                :eventId, :extId, :content, :contentLength, :type,
+                :eventId, :extId, :threadId, :content, :contentLength, :type,
                 :isReply, :referencedMessageExtId, :spawnedThread,
                 :editedAt, :hasAttachments, :attachmentCount, :reactionCount,
                 :mentionUserCount, :mentionRoleCount, :mentionChannelCount,
                 :mentionEveryone, :isTts, :isPinned, :hasStickers, :hasPoll,
-                :embedCount, :isVoiceMessage, :flags, :authorIsBot
+                :embedCount, :isVoiceMessage, :flags, :authorIsBot,
+                COALESCE(:createdAt, CURRENT_TIMESTAMP)
             )
             ON CONFLICT (ext_id) DO UPDATE SET
                 content = :content,
                 content_length = :contentLength,
+                thread_id = :threadId,
                 edited_at = :editedAt,
                 has_attachments = :hasAttachments,
                 attachment_count = :attachmentCount,

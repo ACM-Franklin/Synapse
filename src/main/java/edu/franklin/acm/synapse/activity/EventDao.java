@@ -20,11 +20,13 @@ public interface EventDao {
             INSERT INTO events (
                 member_id,
                 channel_id,
-                event_type
+                event_type,
+                created_at
             ) VALUES (
                 :memberId,
                 :channelId,
-                :eventType
+                :eventType,
+                COALESCE(:createdAt, CURRENT_TIMESTAMP)
             )
             """)
     @GetGeneratedKeys

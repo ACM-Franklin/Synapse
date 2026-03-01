@@ -29,11 +29,16 @@ public class MemberEventHandler {
 
     private static final Logger log = LoggerFactory.getLogger(MemberEventHandler.class);
 
-    @Inject MemberDao memberDao;
-    @Inject MemberRoleDao memberRoleDao;
-    @Inject EventDao eventDao;
-    @Inject VoiceSessionDao voiceSessionDao;
-    @Inject RoleSyncService roleSyncService;
+    @Inject
+    MemberDao memberDao;
+    @Inject
+    MemberRoleDao memberRoleDao;
+    @Inject
+    EventDao eventDao;
+    @Inject
+    VoiceSessionDao voiceSessionDao;
+    @Inject
+    RoleSyncService roleSyncService;
 
     @Inject
     jakarta.enterprise.event.Event<RuleEvaluationRequest> ruleEvents;
@@ -51,7 +56,9 @@ public class MemberEventHandler {
                 timeBoosted != null ? timeBoosted.toString() : null,
                 member.isPending());
 
-        long eventId = eventDao.insert(new Event(0L, memberId, null, "MEMBER_JOIN", null));
+        LocalDateTime joinedAt = LocalDateTime.ofInstant(
+                member.getTimeJoined().toInstant(), ZoneOffset.UTC);
+        long eventId = eventDao.insert(new Event(0L, memberId, null, "MEMBER_JOIN", joinedAt.toString()));
         roleSyncService.syncRoles(memberId, member);
 
         log.info("Member joined: {}", member.getUser().getName());
@@ -103,14 +110,17 @@ public class MemberEventHandler {
                 member.isPending()
         );
 
-        // Detect role changes by diffing stored vs. current
-        List<Long> storedRoles = memberRoleDao.findRolesByMemberId(memberId);
+        detectAndRecordRoleChanges(member, memberId, timeBoosted != null);
+        roleSyncService.syncRoles(memberId, member);
+    }
+
+    private void detectAndRecordRoleChanges(Member member, long memberId, boolean isBoosting) {
+        List<Long> storedRoles = memberRoleDao.findRoleExtIdsByMemberId(memberId);
         Set<Long> currentRoleExtIds = member.getRoles().stream()
                 .map(ISnowflake::getIdLong)
                 .collect(Collectors.toSet());
 
         Set<Long> storedSet = Set.copyOf(storedRoles);
-
         List<Long> added = currentRoleExtIds.stream()
                 .filter(r -> !storedSet.contains(r))
                 .toList();
@@ -118,29 +128,29 @@ public class MemberEventHandler {
                 .filter(r -> !currentRoleExtIds.contains(r))
                 .toList();
 
-        if (!added.isEmpty() || !removed.isEmpty()) {
-            long eventId = eventDao.insert(
-                    new Event(0L, memberId, null, "MEMBER_ROLE_CHANGE", null));
-
-            String addedStr = added.stream().map(String::valueOf).collect(Collectors.joining(","));
-            String removedStr = removed.stream().map(String::valueOf).collect(Collectors.joining(","));
-            memberRoleDao.insertRoleChangeEvent(new MemberRoleChangeEvent(0L, eventId, addedStr, removedStr));
-
-            log.info("Recorded role change for {} — added: [{}], removed: [{}]",
-                    member.getUser().getName(), addedStr, removedStr);
-
-            RuleContext ctx = RuleContext.forRoleChange(
-                    eventId, memberId,
-                    member.getIdLong(),
-                    timeBoosted != null,
-                    member.getTimeJoined().toString(),
-                    memberDao.findPCurrency(memberId),
-                    memberDao.findSCurrency(memberId),
-                    addedStr, removedStr);
-            ruleEvents.fireAsync(new RuleEvaluationRequest(ctx));
+        if (added.isEmpty() && removed.isEmpty()) {
+            return;
         }
 
-        roleSyncService.syncRoles(memberId, member);
+        long eventId = eventDao.insert(
+                new Event(0L, memberId, null, "MEMBER_ROLE_CHANGE", null));
+
+        String addedStr = added.stream().map(String::valueOf).collect(Collectors.joining(","));
+        String removedStr = removed.stream().map(String::valueOf).collect(Collectors.joining(","));
+        memberRoleDao.insertRoleChangeEvent(new MemberRoleChangeEvent(0L, eventId, addedStr, removedStr));
+
+        log.info("Recorded role change for {} — added: [{}], removed: [{}]",
+                member.getUser().getName(), addedStr, removedStr);
+
+        RuleContext ctx = RuleContext.forRoleChange(
+                eventId, memberId,
+                member.getIdLong(),
+                isBoosting,
+                member.getTimeJoined().toString(),
+                memberDao.findPCurrency(memberId),
+                memberDao.findSCurrency(memberId),
+                addedStr, removedStr);
+        ruleEvents.fireAsync(new RuleEvaluationRequest(ctx));
     }
 
     private String utcNow() {
