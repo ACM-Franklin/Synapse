@@ -8,6 +8,7 @@ import edu.franklin.acm.synapse.scanners.handlers.ChannelEventHandler;
 import edu.franklin.acm.synapse.scanners.handlers.MemberEventHandler;
 import edu.franklin.acm.synapse.scanners.handlers.MessageIngestionHandler;
 import edu.franklin.acm.synapse.scanners.handlers.ReconciliationHandler;
+import edu.franklin.acm.synapse.scanners.handlers.RoleEventHandler;
 import edu.franklin.acm.synapse.scanners.handlers.VoiceEventHandler;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -29,6 +30,9 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveAllEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEmojiEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent;
+import net.dv8tion.jda.api.events.role.RoleCreateEvent;
+import net.dv8tion.jda.api.events.role.RoleDeleteEvent;
+import net.dv8tion.jda.api.events.role.update.RoleUpdateNameEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
 /**
@@ -46,6 +50,7 @@ public class GuildLiveScanner extends ListenerAdapter {
     @Inject MemberEventHandler memberHandler;
     @Inject VoiceEventHandler voiceHandler;
     @Inject ChannelEventHandler channelHandler;
+    @Inject RoleEventHandler roleHandler;
     @Inject ReconciliationHandler reconciliationHandler;
 
     @Override
@@ -159,6 +164,33 @@ public class GuildLiveScanner extends ListenerAdapter {
             voiceHandler.handle(event);
         } catch (Exception e) {
             log.error("Failed to process voice update for {}", event.getMember().getUser().getName(), e);
+        }
+    }
+
+    @Override
+    public void onRoleCreate(@NotNull RoleCreateEvent event) {
+        try {
+            roleHandler.handleCreate(event.getRole());
+        } catch (Exception e) {
+            log.error("Failed to process role create for {}", event.getRole().getName(), e);
+        }
+    }
+
+    @Override
+    public void onRoleDelete(@NotNull RoleDeleteEvent event) {
+        try {
+            roleHandler.handleDelete(event.getRole());
+        } catch (Exception e) {
+            log.error("Failed to process role delete for {}", event.getRole().getName(), e);
+        }
+    }
+
+    @Override
+    public void onRoleUpdateName(@NotNull RoleUpdateNameEvent event) {
+        try {
+            roleHandler.handleNameUpdate(event.getRole());
+        } catch (Exception e) {
+            log.error("Failed to process role rename for {}", event.getRole().getName(), e);
         }
     }
 

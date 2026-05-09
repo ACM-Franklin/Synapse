@@ -24,6 +24,14 @@ public interface MemberRoleDao {
     @SqlUpdate("DELETE FROM member_roles WHERE member_id = :memberId")
     void deleteRoles(@Bind("memberId") long memberId);
 
+    @SqlUpdate("""
+        DELETE FROM member_roles
+        WHERE role_id IN (
+            SELECT id FROM roles WHERE ext_id = :roleExtId
+        )
+        """)
+    void deleteRoleAssignmentsByRoleExtId(@Bind("roleExtId") long roleExtId);
+
     /**
      * Inserts a single role assignment for a member.
      *
