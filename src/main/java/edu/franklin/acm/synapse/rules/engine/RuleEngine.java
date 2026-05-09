@@ -5,8 +5,11 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import org.jboss.logging.Logger;
+import org.jdbi.v3.core.Jdbi;
 
 import edu.franklin.acm.synapse.activity.member.MemberDao;
+import edu.franklin.acm.synapse.activity.rules.RewardLedgerDao;
+import edu.franklin.acm.synapse.activity.rules.RewardLedgerEntry;
 import edu.franklin.acm.synapse.activity.rules.Rule;
 import edu.franklin.acm.synapse.activity.rules.RuleDao;
 import edu.franklin.acm.synapse.activity.rules.RuleEvaluationDao;
@@ -35,13 +38,10 @@ public class RuleEngine {
     RulePredicateDao rulePredicateDao;
 
     @Inject
-    RuleOutcomeDao ruleOutcomeDao;
-
-    @Inject
     RuleEvaluationDao ruleEvaluationDao;
 
     @Inject
-    MemberDao memberDao;
+    Jdbi jdbi;
 
     @Inject
     jakarta.enterprise.inject.Instance<PredicateEvaluator> evaluatorBeans;
@@ -119,19 +119,24 @@ public class RuleEngine {
     private void fire(Rule rule, RuleContext ctx) {
         log.infof("Rule '%s' fired for event %d (member %d)", rule.name(), ctx.eventId(), ctx.memberId());
 
-        // Log the evaluation
-        ruleEvaluationDao.insert(rule.id(), ctx.eventId(), ctx.memberId());
+        jdbi.useTransaction(handle -> {
+            RuleEvaluationDao txEvaluationDao = handle.attach(RuleEvaluationDao.class);
+            RuleOutcomeDao txOutcomeDao = handle.attach(RuleOutcomeDao.class);
+            RewardLedgerDao txRewardLedgerDao = handle.attach(RewardLedgerDao.class);
+            MemberDao txMemberDao = handle.attach(MemberDao.class);
 
-        // Dispatch outcomes
-        List<RuleOutcome> outcomes = ruleOutcomeDao.findByRuleId(rule.id());
-        for (RuleOutcome outcome : outcomes) {
-            dispatchOutcome(outcome, ctx);
-        }
+            long ruleEvaluationId = txEvaluationDao.insert(rule.id(), ctx.eventId(), ctx.memberId());
+            List<RuleOutcome> outcomes = txOutcomeDao.findByRuleId(rule.id());
+            for (RuleOutcome outcome : outcomes) {
+                dispatchOutcome(outcome, ctx, ruleEvaluationId, txRewardLedgerDao, txMemberDao);
+            }
+        });
     }
 
-    private void dispatchOutcome(RuleOutcome outcome, RuleContext ctx) {
+    private void dispatchOutcome(RuleOutcome outcome, RuleContext ctx, long ruleEvaluationId,
+                                 RewardLedgerDao rewardLedgerDao, MemberDao memberDao) {
         switch (outcome.type()) {
-            case "CURRENCY" -> dispatchCurrency(outcome, ctx);
+            case "CURRENCY" -> dispatchCurrency(outcome, ctx, ruleEvaluationId, rewardLedgerDao, memberDao);
             case "ACHIEVEMENT" -> log.infof("Achievement outcome for member %d (stub — no achievements table yet)",
                     ctx.memberId());
             case "ANNOUNCEMENT" -> log.infof("Announcement outcome for member %d (stub — no delivery mechanism yet)",
@@ -140,16 +145,35 @@ public class RuleEngine {
         }
     }
 
-    private void dispatchCurrency(RuleOutcome outcome, RuleContext ctx) {
+    private void dispatchCurrency(RuleOutcome outcome, RuleContext ctx, long ruleEvaluationId,
+                                  RewardLedgerDao rewardLedgerDao, MemberDao memberDao) {
         if (outcome.pCurrency() != null && outcome.pCurrency() != 0) {
+            recordCurrencyAward(ruleEvaluationId, outcome, ctx, rewardLedgerDao, "PRIMARY", outcome.pCurrency());
             memberDao.incrementPCurrency(ctx.memberId(), outcome.pCurrency());
             log.debugf("Granted %d primary currency to member %d",
                     (Object) outcome.pCurrency(), (Object) ctx.memberId());
         }
         if (outcome.sCurrency() != null && outcome.sCurrency() != 0) {
+            recordCurrencyAward(ruleEvaluationId, outcome, ctx, rewardLedgerDao, "SECONDARY", outcome.sCurrency());
             memberDao.incrementSCurrency(ctx.memberId(), outcome.sCurrency());
             log.debugf("Granted %d secondary currency to member %d",
                     (Object) outcome.sCurrency(), (Object) ctx.memberId());
         }
+    }
+
+    private void recordCurrencyAward(long ruleEvaluationId, RuleOutcome outcome, RuleContext ctx,
+                                     RewardLedgerDao rewardLedgerDao, String currencyType, int amount) {
+        rewardLedgerDao.insert(new RewardLedgerEntry(
+                0L,
+                ruleEvaluationId,
+                outcome.id(),
+                outcome.ruleId(),
+                ctx.eventId(),
+                ctx.memberId(),
+                currencyType,
+                amount,
+                "AWARD",
+                null,
+                null));
     }
 }

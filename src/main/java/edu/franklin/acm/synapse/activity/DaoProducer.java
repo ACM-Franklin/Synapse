@@ -14,6 +14,7 @@ import edu.franklin.acm.synapse.activity.message.MessageAttachmentDao;
 import edu.franklin.acm.synapse.activity.message.MessageEventDao;
 import edu.franklin.acm.synapse.activity.message.MessageReactionDao;
 import edu.franklin.acm.synapse.activity.migrations.MigrationDao;
+import edu.franklin.acm.synapse.activity.rules.RewardLedgerDao;
 import edu.franklin.acm.synapse.activity.rules.RuleDao;
 import edu.franklin.acm.synapse.activity.rules.RuleEvaluationDao;
 import edu.franklin.acm.synapse.activity.rules.RuleOutcomeDao;
@@ -163,6 +164,12 @@ public class DaoProducer {
     @ApplicationScoped
     public RuleEvaluationDao ruleEvaluationDao() {
         return jdbi.onDemand(RuleEvaluationDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public RewardLedgerDao rewardLedgerDao() {
+        return jdbi.onDemand(RewardLedgerDao.class);
     }
 
     @Produces

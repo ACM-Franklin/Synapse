@@ -366,3 +366,32 @@ CREATE TABLE IF NOT EXISTS rule_evaluations (
 
 CREATE INDEX IF NOT EXISTS rule_evaluations_rule_member_idx ON rule_evaluations (rule_id, member_id);
 CREATE INDEX IF NOT EXISTS rule_evaluations_event_idx ON rule_evaluations (event_id);
+
+-- Attributable currency effects produced by rules. This is the accounting layer
+-- that lets edits, deletes, replay, and reward traces reason about what changed.
+CREATE TABLE IF NOT EXISTS reward_ledger (
+    id                         INTEGER PRIMARY KEY,
+    rule_evaluation_id         BIGINT NOT NULL,
+    rule_outcome_id            BIGINT NOT NULL,
+    rule_id                    BIGINT NOT NULL,
+    event_id                   BIGINT NOT NULL,
+    member_id                  BIGINT NOT NULL,
+    currency_type              VARCHAR NOT NULL,
+    amount                     INTEGER NOT NULL,
+    transaction_type           VARCHAR NOT NULL DEFAULT 'AWARD',
+    reverses_reward_ledger_id  BIGINT,
+    created_at                 TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (rule_evaluation_id)        REFERENCES rule_evaluations (id),
+    FOREIGN KEY (rule_outcome_id)           REFERENCES rule_outcomes (id),
+    FOREIGN KEY (rule_id)                   REFERENCES rules (id),
+    FOREIGN KEY (event_id)                  REFERENCES events (id),
+    FOREIGN KEY (member_id)                 REFERENCES members (id),
+    FOREIGN KEY (reverses_reward_ledger_id) REFERENCES reward_ledger (id)
+);
+
+CREATE INDEX IF NOT EXISTS reward_ledger_member_idx ON reward_ledger (member_id, created_at);
+CREATE INDEX IF NOT EXISTS reward_ledger_event_idx ON reward_ledger (event_id);
+CREATE INDEX IF NOT EXISTS reward_ledger_rule_eval_idx ON reward_ledger (rule_evaluation_id);
+CREATE UNIQUE INDEX IF NOT EXISTS reward_ledger_award_uq
+    ON reward_ledger (rule_evaluation_id, rule_outcome_id, currency_type, transaction_type)
+    WHERE transaction_type = 'AWARD';
