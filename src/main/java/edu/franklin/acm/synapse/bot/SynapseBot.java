@@ -86,6 +86,7 @@ public class SynapseBot {
         log.info("SynapseBot starting up...");
         jda = JDABuilder.createDefault(discordToken)
                 .enableIntents(
+                        GatewayIntent.GUILD_MESSAGES,
                         GatewayIntent.MESSAGE_CONTENT,
                         GatewayIntent.GUILD_MEMBERS,
                         GatewayIntent.GUILD_MESSAGE_REACTIONS,

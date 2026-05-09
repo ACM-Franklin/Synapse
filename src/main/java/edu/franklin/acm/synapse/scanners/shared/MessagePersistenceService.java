@@ -18,23 +18,27 @@ import jakarta.inject.Inject;
 import net.dv8tion.jda.api.entities.Message;
 
 /**
- * Transaction-wrapped persistence of a message and its metadata (attachments, reactions)
- * into the Event Lake. Used by both the live and historical scanners.
+ * Transaction-wrapped persistence of a message and its metadata (attachments,
+ * reactions) into the Event Lake. Used by both the live and historical
+ * scanners.
  *
- * <p>Does NOT fire rule evaluation — that is the caller's responsibility.
+ * <p>
+ * Does NOT fire rule evaluation — that is the caller's responsibility.
  */
 @ApplicationScoped
 public class MessagePersistenceService {
 
-    @Inject Jdbi jdbi;
+    @Inject
+    Jdbi jdbi;
 
     /**
      * Persists an event, message row, attachments, and reactions atomically.
      *
-     * @param memberInternalId  internal member ID (already upserted by caller)
+     * @param memberInternalId internal member ID (already upserted by caller)
      * @param channelInternalId internal channel ID (already upserted by caller)
-     * @param threadInternalId  internal thread ID, or {@code null} for non-thread messages
-     * @param m                 the JDA message
+     * @param threadInternalId internal thread ID, or {@code null} for
+     * non-thread messages
+     * @param m the JDA message
      * @return the generated event ID
      */
     @SuppressWarnings("null")
@@ -66,6 +70,41 @@ public class MessagePersistenceService {
             }
 
             return eventId;
+        });
+    }
+
+    @SuppressWarnings("null")
+    public void updateMessageSnapshot(long memberInternalId, long channelInternalId, Long threadInternalId, Message m) {
+        jdbi.useTransaction(handle -> {
+            EventDao txEvent = handle.attach(EventDao.class);
+            MessageEventDao txMsg = handle.attach(MessageEventDao.class);
+            MessageAttachmentDao txAtt = handle.attach(MessageAttachmentDao.class);
+            MessageReactionDao txRxn = handle.attach(MessageReactionDao.class);
+
+            Long existingEventId = txMsg.findEventIdByExtId(m.getIdLong());
+            long eventId = existingEventId != null
+                    ? existingEventId
+                    : txEvent.insert(new Event(
+                            0L,
+                            memberInternalId,
+                            channelInternalId,
+                            "MESSAGE_CREATE",
+                            LocalDateTime.ofInstant(m.getTimeCreated().toInstant(), ZoneOffset.UTC).toString()));
+            long messageId = txMsg.upsert(MessageEvent.fromDiscord(eventId, threadInternalId, m));
+
+            txAtt.deleteByMessageId(messageId);
+            if (!m.getAttachments().isEmpty()) {
+                txAtt.insertBatch(m.getAttachments().stream()
+                        .map(a -> MessageAttachment.fromDiscord(messageId, a))
+                        .toList());
+            }
+
+            txRxn.deleteByMessageId(messageId);
+            if (!m.getReactions().isEmpty()) {
+                txRxn.insertBatch(m.getReactions().stream()
+                        .map(r -> MessageReaction.fromDiscord(messageId, r))
+                        .toList());
+            }
         });
     }
 }

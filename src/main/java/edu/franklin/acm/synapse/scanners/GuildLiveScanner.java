@@ -22,7 +22,11 @@ import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRemoveEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberUpdateEvent;
 import net.dv8tion.jda.api.events.guild.voice.GuildVoiceUpdateEvent;
+import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
+import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
+import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
 /**
@@ -51,6 +55,50 @@ public class GuildLiveScanner extends ListenerAdapter {
             messageHandler.handle(event.getMessage());
         } catch (Exception e) {
             log.error("Failed to ingest live message {}", event.getMessage().getId(), e);
+        }
+    }
+
+    @Override
+    public void onMessageUpdate(@NotNull MessageUpdateEvent event) {
+        if (!event.isFromGuild()) return;
+
+        try {
+            messageHandler.handleUpdate(event.getMessage());
+        } catch (Exception e) {
+            log.error("Failed to update live message snapshot {}", event.getMessageId(), e);
+        }
+    }
+
+    @Override
+    public void onMessageDelete(@NotNull MessageDeleteEvent event) {
+        if (!event.isFromGuild()) return;
+
+        try {
+            messageHandler.handleDelete(event.getMessageIdLong());
+        } catch (Exception e) {
+            log.error("Failed to process live message delete {}", event.getMessageId(), e);
+        }
+    }
+
+    @Override
+    public void onMessageReactionAdd(@NotNull MessageReactionAddEvent event) {
+        if (!event.isFromGuild()) return;
+
+        try {
+            messageHandler.handleReactionAdd(event.getReaction());
+        } catch (Exception e) {
+            log.error("Failed to process live reaction add on message {}", event.getMessageId(), e);
+        }
+    }
+
+    @Override
+    public void onMessageReactionRemove(@NotNull MessageReactionRemoveEvent event) {
+        if (!event.isFromGuild()) return;
+
+        try {
+            messageHandler.handleReactionRemove(event.getReaction());
+        } catch (Exception e) {
+            log.error("Failed to process live reaction remove on message {}", event.getMessageId(), e);
         }
     }
 

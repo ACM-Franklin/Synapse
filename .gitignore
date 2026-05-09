@@ -49,7 +49,7 @@ nb-configuration.xml
 
 # Local docs
 local_docs/
-.github/copilot-instructions.md
+.github/
 
 # Synapse
 synapse.sqlite

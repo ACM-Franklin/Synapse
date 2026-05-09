@@ -1,20 +1,25 @@
 package edu.franklin.acm.synapse.activity.message;
 
+import org.jdbi.v3.sqlobject.config.RegisterConstructorMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 
 /**
- * Persists message event data with upsert semantics on Discord message ID (ext_id).
- * Ensures a single row per message; message edits overwrite mutable fields in place.
+ * Persists message event data with upsert semantics on Discord message ID
+ * (ext_id). Ensures a single row per message; message edits overwrite mutable
+ * fields in place.
  */
+@RegisterConstructorMapper(MessageDeletionTarget.class)
 public interface MessageEventDao {
 
     /**
-     * Inserts a new message event or updates the existing row if the Discord message
-     * ID already exists. Only mutable fields are updated on conflict; immutable fields
-     * (event_id, ext_id, author_is_bot, type) retain their original values.
-     * 
+     * Inserts a new message event or updates the existing row if the Discord
+     * message ID already exists. Only mutable fields are updated on conflict;
+     * immutable fields (event_id, ext_id, author_is_bot, type) retain their
+     * original values.
+     *
      * @param messageEvent the message event data to persist
      * @return the internal row ID (auto-generated)
      */
@@ -61,10 +66,46 @@ public interface MessageEventDao {
 
     /**
      * Looks up the internal row ID by Discord message ID.
-     * 
+     *
      * @param extId the Discord message ID (snowflake)
      * @return the internal row ID, or {@code null} if not found
      */
     @SqlQuery("SELECT id FROM messages WHERE ext_id = :extId")
     Long findIdByExtId(@Bind("extId") long extId);
+
+    @SqlQuery("SELECT event_id FROM messages WHERE ext_id = :extId")
+    Long findEventIdByExtId(@Bind("extId") long extId);
+
+    @SqlQuery("""
+            SELECT m.id AS message_id,
+                   m.event_id AS event_id,
+                   e.member_id AS member_id,
+                   e.channel_id AS channel_id
+            FROM messages m
+            JOIN events e ON e.id = m.event_id
+            WHERE m.ext_id = :extId
+            """)
+    MessageDeletionTarget findDeletionTargetByExtId(@Bind("extId") long extId);
+
+    @SqlUpdate("""
+            UPDATE messages
+            SET is_deleted = 1,
+                deleted_at = CURRENT_TIMESTAMP
+            WHERE ext_id = :extId
+            """)
+    void markDeleted(@Bind("extId") long extId);
+
+    @SqlUpdate("""
+            UPDATE messages
+            SET reaction_count = reaction_count + 1
+            WHERE id = :messageId
+            """)
+    void incrementReactionCount(@Bind("messageId") long messageId);
+
+    @SqlUpdate("""
+            UPDATE messages
+            SET reaction_count = MAX(reaction_count - 1, 0)
+            WHERE id = :messageId
+            """)
+    void decrementReactionCount(@Bind("messageId") long messageId);
 }

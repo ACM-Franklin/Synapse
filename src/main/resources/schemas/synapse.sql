@@ -235,6 +235,8 @@ CREATE TABLE IF NOT EXISTS messages (
     has_poll                    INTEGER NOT NULL DEFAULT 0,
     embed_count                 INTEGER NOT NULL DEFAULT 0,
     is_voice_message            INTEGER NOT NULL DEFAULT 0,
+    is_deleted                  INTEGER NOT NULL DEFAULT 0,
+    deleted_at                  TIMESTAMP,
     flags                       BIGINT NOT NULL DEFAULT 0,
     author_is_bot               INTEGER NOT NULL DEFAULT 0,
     created_at                  TIMESTAMP,
@@ -247,6 +249,7 @@ CREATE INDEX IF NOT EXISTS messages_ext_id_idx    ON messages (ext_id);
 CREATE INDEX IF NOT EXISTS messages_event_id_idx  ON messages (event_id);
 CREATE INDEX IF NOT EXISTS messages_type_idx      ON messages (type);
 CREATE INDEX IF NOT EXISTS messages_thread_id_idx ON messages (thread_id);
+CREATE INDEX IF NOT EXISTS messages_is_deleted_idx ON messages (is_deleted);
 
 -- Attachments belonging to a message.
 CREATE TABLE IF NOT EXISTS message_attachments (

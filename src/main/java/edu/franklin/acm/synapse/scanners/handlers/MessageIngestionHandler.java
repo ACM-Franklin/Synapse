@@ -1,10 +1,21 @@
 package edu.franklin.acm.synapse.scanners.handlers;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+
+import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.franklin.acm.synapse.activity.Event;
+import edu.franklin.acm.synapse.activity.EventDao;
 import edu.franklin.acm.synapse.activity.member.MemberDao;
+import edu.franklin.acm.synapse.activity.message.MessageDeletionTarget;
 import edu.franklin.acm.synapse.activity.message.MessageEvent;
+import edu.franklin.acm.synapse.activity.message.MessageEventDao;
+import edu.franklin.acm.synapse.activity.message.MessageReactionDao;
+import edu.franklin.acm.synapse.activity.rules.RewardLedgerDao;
+import edu.franklin.acm.synapse.activity.rules.RewardLedgerEntry;
 import edu.franklin.acm.synapse.rules.engine.RuleContext;
 import edu.franklin.acm.synapse.rules.engine.RuleEvaluationRequest;
 import edu.franklin.acm.synapse.scanners.shared.ChannelService;
@@ -14,6 +25,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
+import net.dv8tion.jda.api.entities.emoji.Emoji;
 
 @ApplicationScoped
 public class MessageIngestionHandler {
@@ -21,6 +33,9 @@ public class MessageIngestionHandler {
     private static final Logger log = LoggerFactory.getLogger(MessageIngestionHandler.class);
 
     @Inject MemberDao memberDao;
+        @Inject MessageEventDao messageEventDao;
+        @Inject MessageReactionDao messageReactionDao;
+        @Inject Jdbi jdbi;
     @Inject ChannelService channelService;
     @Inject ThreadService threadService;
     @Inject MessagePersistenceService messagePersistenceService;
@@ -67,5 +82,99 @@ public class MessageIngestionHandler {
                 null,
                 attFilename, attContentType);
         ruleEvents.fireAsync(new RuleEvaluationRequest(ctx));
+    }
+
+    public void handleUpdate(Message m) {
+        long channelInternalId;
+        Long threadInternalId = null;
+
+        if (m.getChannel() instanceof ThreadChannel thread) {
+            channelInternalId = channelService.upsertChannel(thread.getParentChannel());
+            threadInternalId = threadService.upsertThread(thread, channelInternalId);
+        } else {
+            channelInternalId = channelService.upsertChannel(m.getChannel());
+        }
+
+        long memberInternalId = memberDao.upsert(
+                m.getAuthor().getIdLong(),
+                m.getAuthor().getName(),
+                m.getAuthor().isBot());
+
+        messagePersistenceService.updateMessageSnapshot(memberInternalId, channelInternalId, threadInternalId, m);
+        log.debug("Updated live message snapshot {} from {}", m.getId(), m.getAuthor().getName());
+    }
+
+    public void handleDelete(long messageExtId) {
+        jdbi.useTransaction(handle -> {
+            MessageEventDao txMessageDao = handle.attach(MessageEventDao.class);
+            EventDao txEventDao = handle.attach(EventDao.class);
+            RewardLedgerDao txRewardLedgerDao = handle.attach(RewardLedgerDao.class);
+            MemberDao txMemberDao = handle.attach(MemberDao.class);
+
+            MessageDeletionTarget target = txMessageDao.findDeletionTargetByExtId(messageExtId);
+            if (target == null) {
+                log.debug("Ignored delete for unknown message {}", messageExtId);
+                return;
+            }
+
+            long deleteEventId = txEventDao.insert(new Event(
+                    0L,
+                    target.memberId(),
+                    target.channelId(),
+                    "MESSAGE_DELETE",
+                    LocalDateTime.now(ZoneOffset.UTC).toString()));
+            txMessageDao.markDeleted(messageExtId);
+
+            for (RewardLedgerEntry award : txRewardLedgerDao.findUnreversedAwardsByEventId(target.eventId())) {
+                txRewardLedgerDao.insert(new RewardLedgerEntry(
+                        0L,
+                        award.ruleEvaluationId(),
+                        award.ruleOutcomeId(),
+                        award.ruleId(),
+                        deleteEventId,
+                        award.memberId(),
+                        award.currencyType(),
+                        -award.amount(),
+                        "REVERSAL",
+                        award.id(),
+                        null));
+                reverseMemberBalance(txMemberDao, award);
+            }
+        });
+    }
+
+    public void handleReactionAdd(net.dv8tion.jda.api.entities.MessageReaction reaction) {
+        Long messageId = messageEventDao.findIdByExtId(reaction.getMessageIdLong());
+        if (messageId == null) {
+            log.debug("Ignored reaction add for unknown message {}", reaction.getMessageId());
+            return;
+        }
+        messageReactionDao.incrementCount(messageId, reaction.getEmoji().getName(), customEmojiExtId(reaction));
+        messageEventDao.incrementReactionCount(messageId);
+    }
+
+    public void handleReactionRemove(net.dv8tion.jda.api.entities.MessageReaction reaction) {
+        Long messageId = messageEventDao.findIdByExtId(reaction.getMessageIdLong());
+        if (messageId == null) {
+            log.debug("Ignored reaction remove for unknown message {}", reaction.getMessageId());
+            return;
+        }
+        messageReactionDao.decrementCount(messageId, reaction.getEmoji().getName(), customEmojiExtId(reaction));
+        messageEventDao.decrementReactionCount(messageId);
+    }
+
+    private void reverseMemberBalance(MemberDao txMemberDao, RewardLedgerEntry award) {
+        switch (award.currencyType()) {
+            case "PRIMARY" -> txMemberDao.incrementPCurrency(award.memberId(), -award.amount());
+            case "SECONDARY" -> txMemberDao.incrementSCurrency(award.memberId(), -award.amount());
+            default -> log.warn("Cannot reverse unknown currency type {} on reward ledger {}",
+                    award.currencyType(), award.id());
+        }
+    }
+
+    private Long customEmojiExtId(net.dv8tion.jda.api.entities.MessageReaction reaction) {
+        return reaction.getEmoji().getType() == Emoji.Type.CUSTOM
+                ? reaction.getEmoji().asCustom().getIdLong()
+                : null;
     }
 }

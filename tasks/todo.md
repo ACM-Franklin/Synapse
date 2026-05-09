@@ -1,28 +1,34 @@
-# Current Task: Reward Ledger Foundation
+# Current Task: Phase-One Ingestion Coverage
 
 ## Goal
 
-Add the first backend foundation for attributable reward accounting so future
-message edits, message deletes, replay, leveling, and reward traces do not rely
-on blind direct balance increments.
+Map the current ingestion surface, identify live and historical gaps, and begin
+closing non-speculative live ingestion gaps that already have locked product
+semantics.
 
 ## Plan
 
-- [x] Inspect the current reward evaluation and currency dispatch flow.
-- [x] Add a reward ledger table to the schema.
-- [x] Add Java record and JDBI DAO support for ledger entries.
-- [x] Wire currency outcomes through the ledger before updating member balances.
-- [x] Keep behavior compatible with the current rule engine.
-- [x] Run Maven verification.
+- [x] Map existing live scanner coverage.
+- [x] Map existing historical scanner coverage.
+- [x] Read exact JDA event syntax for any handlers being implemented.
+- [x] Document the ingestion coverage matrix.
+- [x] Implement safe live-message mutation support where semantics are locked.
+- [x] Run Maven and schema verification.
 
 ## Review
 
-- Added `reward_ledger` to the schema for attributable currency effects.
-- Added `RewardLedgerEntry` and `RewardLedgerDao`.
-- Produced `RewardLedgerDao` through `DaoProducer`.
-- Wired `RuleEngine` so currency outcomes insert ledger entries before member
-  balances are updated.
-- Wrapped rule evaluation insert, ledger insert, and balance update in one JDBI
-  transaction.
+- Added `INGESTION_COVERAGE_MATRIX.md` to document live, historical,
+  reconciliation, missing, and deferred ingestion surfaces.
+- Added message deletion tombstone columns to `messages`.
+- Added live message update handling for current-state snapshot refresh.
+- Added live message delete handling with reward ledger reversals for unreversed
+  currency awards tied to the original message event.
+- Added live reaction add/remove handling for per-emoji counts and aggregate
+  message reaction counts.
+- Explicitly enabled `GUILD_MESSAGES` because message update/delete events require
+  it for guild text channels.
+- Left edit reward delta re-evaluation deferred because doing it before
+  subject-based delta accounting would create double-dip risk.
 - Verified with `./mvnw test`.
 - Verified schema loads with `sqlite3 :memory: < src/main/resources/schemas/synapse.sql`.
+- Verified whitespace with `git diff --check`.
