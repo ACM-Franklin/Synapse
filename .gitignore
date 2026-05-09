@@ -50,6 +50,7 @@ nb-configuration.xml
 # Local docs
 local_docs/
 .github/
+ROADMAP.md
 
 # Synapse
 synapse.sqlite

@@ -2,9 +2,11 @@ package edu.franklin.acm.synapse.rules.engine;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import org.jboss.logging.Logger;
+import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 
 import edu.franklin.acm.synapse.activity.member.MemberDao;
@@ -30,6 +32,7 @@ import jakarta.inject.Inject;
 public class RuleEngine {
 
     private static final Logger log = Logger.getLogger(RuleEngine.class);
+    private static final DateTimeFormatter SQL_TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Inject
     RuleDao ruleDao;
@@ -87,7 +90,7 @@ public class RuleEngine {
         if (rule.cooldownSeconds() > 0) {
             String since = LocalDateTime.now(ZoneOffset.UTC)
                     .minusSeconds(rule.cooldownSeconds())
-                    .toString();
+                    .format(SQL_TIMESTAMP_FORMAT);
             if (ruleEvaluationDao.countRecentByRuleAndMember(rule.id(), ctx.memberId(), since) > 0) {
                 return;
             }
@@ -120,10 +123,10 @@ public class RuleEngine {
         log.infof("Rule '%s' fired for event %d (member %d)", rule.name(), ctx.eventId(), ctx.memberId());
 
         jdbi.useTransaction(handle -> {
-            RuleEvaluationDao txEvaluationDao = handle.attach(RuleEvaluationDao.class);
-            RuleOutcomeDao txOutcomeDao = handle.attach(RuleOutcomeDao.class);
-            RewardLedgerDao txRewardLedgerDao = handle.attach(RewardLedgerDao.class);
-            MemberDao txMemberDao = handle.attach(MemberDao.class);
+            RuleEvaluationDao txEvaluationDao = attachDao(handle, RuleEvaluationDao.class);
+            RuleOutcomeDao txOutcomeDao = attachDao(handle, RuleOutcomeDao.class);
+            RewardLedgerDao txRewardLedgerDao = attachDao(handle, RewardLedgerDao.class);
+            MemberDao txMemberDao = attachDao(handle, MemberDao.class);
 
             long ruleEvaluationId = txEvaluationDao.insert(rule.id(), ctx.eventId(), ctx.memberId());
             List<RuleOutcome> outcomes = txOutcomeDao.findByRuleId(rule.id());
@@ -175,5 +178,10 @@ public class RuleEngine {
                 "AWARD",
                 null,
                 null));
+    }
+
+    @SuppressWarnings("null")
+    private static <T> T attachDao(Handle handle, Class<T> daoType) {
+        return handle.attach(daoType);
     }
 }

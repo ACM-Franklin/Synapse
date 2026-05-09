@@ -3,6 +3,7 @@ package edu.franklin.acm.synapse.scanners.handlers;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
+import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,9 +34,9 @@ public class MessageIngestionHandler {
     private static final Logger log = LoggerFactory.getLogger(MessageIngestionHandler.class);
 
     @Inject MemberDao memberDao;
-        @Inject MessageEventDao messageEventDao;
-        @Inject MessageReactionDao messageReactionDao;
-        @Inject Jdbi jdbi;
+    @Inject MessageEventDao messageEventDao;
+    @Inject MessageReactionDao messageReactionDao;
+    @Inject Jdbi jdbi;
     @Inject ChannelService channelService;
     @Inject ThreadService threadService;
     @Inject MessagePersistenceService messagePersistenceService;
@@ -106,10 +107,10 @@ public class MessageIngestionHandler {
 
     public void handleDelete(long messageExtId) {
         jdbi.useTransaction(handle -> {
-            MessageEventDao txMessageDao = handle.attach(MessageEventDao.class);
-            EventDao txEventDao = handle.attach(EventDao.class);
-            RewardLedgerDao txRewardLedgerDao = handle.attach(RewardLedgerDao.class);
-            MemberDao txMemberDao = handle.attach(MemberDao.class);
+            MessageEventDao txMessageDao = attachDao(handle, MessageEventDao.class);
+            EventDao txEventDao = attachDao(handle, EventDao.class);
+            RewardLedgerDao txRewardLedgerDao = attachDao(handle, RewardLedgerDao.class);
+            MemberDao txMemberDao = attachDao(handle, MemberDao.class);
 
             MessageDeletionTarget target = txMessageDao.findDeletionTargetByExtId(messageExtId);
             if (target == null) {
@@ -176,5 +177,10 @@ public class MessageIngestionHandler {
         return reaction.getEmoji().getType() == Emoji.Type.CUSTOM
                 ? reaction.getEmoji().asCustom().getIdLong()
                 : null;
+    }
+
+    @SuppressWarnings("null")
+    private static <T> T attachDao(Handle handle, Class<T> daoType) {
+        return handle.attach(daoType);
     }
 }

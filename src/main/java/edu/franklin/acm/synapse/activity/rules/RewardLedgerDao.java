@@ -59,20 +59,17 @@ public interface RewardLedgerDao {
             """)
     List<RewardLedgerEntry> findRecentByMember(@Bind("memberId") long memberId, @Bind("limit") int limit);
 
-    @SqlQuery("""
-                        SELECT award.id, award.rule_evaluation_id, award.rule_outcome_id,
-                                   award.rule_id, award.event_id, award.member_id,
-                                   award.currency_type, award.amount, award.transaction_type,
-                                   award.reverses_reward_ledger_id, award.created_at
-                        FROM reward_ledger award
-                        WHERE award.event_id = :eventId
-                          AND award.transaction_type = 'AWARD'
-                          AND NOT EXISTS (
-                                  SELECT 1
-                                  FROM reward_ledger reversal
-                                  WHERE reversal.reverses_reward_ledger_id = award.id
-                          )
-                        ORDER BY award.id
-                        """)
+    @SqlQuery("SELECT award.id, award.rule_evaluation_id, award.rule_outcome_id, "
+            + "award.rule_id, award.event_id, award.member_id, "
+            + "award.currency_type, award.amount, award.transaction_type, "
+            + "award.reverses_reward_ledger_id, award.created_at "
+            + "FROM reward_ledger award "
+            + "WHERE award.event_id = :eventId "
+            + "AND award.transaction_type = 'AWARD' "
+            + "AND NOT EXISTS ("
+            + "SELECT 1 FROM reward_ledger reversal "
+            + "WHERE reversal.reverses_reward_ledger_id = award.id"
+            + ") "
+            + "ORDER BY award.id")
     List<RewardLedgerEntry> findUnreversedAwardsByEventId(@Bind("eventId") long eventId);
 }

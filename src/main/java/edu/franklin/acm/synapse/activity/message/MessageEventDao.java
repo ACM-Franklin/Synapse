@@ -76,15 +76,11 @@ public interface MessageEventDao {
     @SqlQuery("SELECT event_id FROM messages WHERE ext_id = :extId")
     Long findEventIdByExtId(@Bind("extId") long extId);
 
-    @SqlQuery("""
-            SELECT m.id AS message_id,
-                   m.event_id AS event_id,
-                   e.member_id AS member_id,
-                   e.channel_id AS channel_id
-            FROM messages m
-            JOIN events e ON e.id = m.event_id
-            WHERE m.ext_id = :extId
-            """)
+    @SqlQuery("SELECT m.id AS message_id, m.event_id AS event_id, "
+            + "e.member_id AS member_id, e.channel_id AS channel_id "
+            + "FROM messages m "
+            + "JOIN events e ON e.id = m.event_id "
+            + "WHERE m.ext_id = :extId AND m.is_deleted = 0")
     MessageDeletionTarget findDeletionTargetByExtId(@Bind("extId") long extId);
 
     @SqlUpdate("""
