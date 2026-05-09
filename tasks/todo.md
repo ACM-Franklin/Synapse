@@ -1,26 +1,23 @@
-# Current Task: Verification Foundation
+# Current Task: Ingestion Completeness
 
 ## Goal
 
-Create a private roadmap to done and add the first meaningful automated tests
-for the completed ledger and live message mutation phases.
+Close non-speculative live-ingestion gaps from the coverage matrix and leave
+deferred Discord surfaces documented instead of ambiguous.
 
 ## Plan
 
-- [x] Add ignored private `ROADMAP.md` with continuous-update instructions.
-- [x] Add SQLite-backed test support.
-- [x] Add schema and DAO contract tests.
-- [x] Add rule engine reward ledger tests.
-- [x] Add message delete reversal tests.
+- [x] Read exact JDA event syntax for reaction bulk-removal events.
+- [x] Add DAO support for clearing reaction counts by message and emoji.
+- [x] Wire live reaction remove-all and remove-emoji handlers.
+- [x] Add focused SQLite-backed tests for the new mutation behavior.
+- [x] Update ingestion coverage documentation and roadmap review notes.
 - [x] Run Maven, schema, diagnostics, and whitespace verification.
 
 ## Review
 
-- Added private ignored `ROADMAP.md` with a phase-by-phase path to done and an explicit rule to keep it updated.
-- Added SQLite-backed JDBI test support using a temp database file, not in-memory SQLite connection roulette.
-- Added schema smoke coverage for reward ledger and live message mutation schema pieces.
-- Added DAO tests for message upsert immutability, tombstones, reaction counters, and unreversed reward lookup.
-- Added rule engine tests proving ledger-backed currency awards, event deduplication, and cooldown suppression.
-- Added delete reversal coverage proving tombstone behavior, reversal ledger entries, balance correction, and repeated-delete idempotency.
-- Fixed cooldown timestamp comparison in `RuleEngine`; SQLite stores `CURRENT_TIMESTAMP` with a space separator, while Java `LocalDateTime.toString()` uses `T`, which made the old comparison unreliable.
-- Updated message deletion lookup to ignore already-deleted messages so repeated delete handling does not mint duplicate delete events.
+- Confirmed JDA exposes `onMessageReactionRemoveAll(MessageReactionRemoveAllEvent)` and `onMessageReactionRemoveEmoji(MessageReactionRemoveEmojiEvent)` through `ListenerAdapter`.
+- Added live remove-all handling that clears all stored reaction rows for the message and sets the aggregate message reaction count to zero.
+- Added live remove-emoji handling that deletes only the removed emoji row and subtracts its stored count from the aggregate count with a zero floor.
+- Added focused SQLite-backed handler coverage for remove-all and remove-emoji snapshot behavior.
+- Verified with `./mvnw test`, SQLite schema load, diagnostics, and `git diff --check`.

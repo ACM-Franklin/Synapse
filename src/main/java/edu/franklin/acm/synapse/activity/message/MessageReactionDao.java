@@ -5,12 +5,13 @@ import java.util.List;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.statement.SqlBatch;
+import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 
 /**
  * Writes per-emoji reaction rows for a message. Batch methods used by scanners
  * for snapshot persistence. Upsert/decrement methods used by live scanner for
- * individual reaction events.
+ * individual and bulk reaction events.
  */
 public interface MessageReactionDao {
 
@@ -57,6 +58,29 @@ public interface MessageReactionDao {
                 AND COALESCE(emoji_ext_id, 0) = COALESCE(:emojiExtId, 0)
             """)
     void decrementCount(
+            @Bind("messageId") long messageId,
+            @Bind("emojiName") String emojiName,
+            @Bind("emojiExtId") Long emojiExtId);
+
+        @SqlQuery("""
+            SELECT COALESCE(MAX(count), 0)
+            FROM message_reactions
+            WHERE message_id = :messageId
+            AND emoji_name = :emojiName
+            AND COALESCE(emoji_ext_id, 0) = COALESCE(:emojiExtId, 0)
+            """)
+        int findCount(
+            @Bind("messageId") long messageId,
+            @Bind("emojiName") String emojiName,
+            @Bind("emojiExtId") Long emojiExtId);
+
+        @SqlUpdate("""
+            DELETE FROM message_reactions
+            WHERE message_id = :messageId
+            AND emoji_name = :emojiName
+            AND COALESCE(emoji_ext_id, 0) = COALESCE(:emojiExtId, 0)
+            """)
+        void deleteEmoji(
             @Bind("messageId") long messageId,
             @Bind("emojiName") String emojiName,
             @Bind("emojiExtId") Long emojiExtId);

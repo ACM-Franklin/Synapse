@@ -164,6 +164,35 @@ public class MessageIngestionHandler {
         messageEventDao.decrementReactionCount(messageId);
     }
 
+    public void handleReactionRemoveAll(long messageExtId) {
+        Long messageId = messageEventDao.findIdByExtId(messageExtId);
+        if (messageId == null) {
+            log.debug("Ignored reaction remove-all for unknown message {}", messageExtId);
+            return;
+        }
+        messageReactionDao.deleteByMessageId(messageId);
+        messageEventDao.clearReactionCount(messageId);
+    }
+
+    public void handleReactionRemoveEmoji(net.dv8tion.jda.api.entities.MessageReaction reaction) {
+        handleReactionRemoveEmoji(
+                reaction.getMessageIdLong(),
+                reaction.getEmoji().getName(),
+                customEmojiExtId(reaction));
+    }
+
+    void handleReactionRemoveEmoji(long messageExtId, String emojiName, Long emojiExtId) {
+        Long messageId = messageEventDao.findIdByExtId(messageExtId);
+        if (messageId == null) {
+            log.debug("Ignored reaction remove-emoji for unknown message {}", messageExtId);
+            return;
+        }
+
+        int removedCount = messageReactionDao.findCount(messageId, emojiName, emojiExtId);
+        messageReactionDao.deleteEmoji(messageId, emojiName, emojiExtId);
+        messageEventDao.decrementReactionCountBy(messageId, removedCount);
+    }
+
     private void reverseMemberBalance(MemberDao txMemberDao, RewardLedgerEntry award) {
         switch (award.currencyType()) {
             case "PRIMARY" -> txMemberDao.incrementPCurrency(award.memberId(), -award.amount());

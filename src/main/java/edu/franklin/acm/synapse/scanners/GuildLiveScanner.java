@@ -26,6 +26,8 @@ import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
+import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveAllEvent;
+import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEmojiEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
@@ -99,6 +101,28 @@ public class GuildLiveScanner extends ListenerAdapter {
             messageHandler.handleReactionRemove(event.getReaction());
         } catch (Exception e) {
             log.error("Failed to process live reaction remove on message {}", event.getMessageId(), e);
+        }
+    }
+
+    @Override
+    public void onMessageReactionRemoveAll(@NotNull MessageReactionRemoveAllEvent event) {
+        if (!event.isFromGuild()) return;
+
+        try {
+            messageHandler.handleReactionRemoveAll(event.getMessageIdLong());
+        } catch (Exception e) {
+            log.error("Failed to process live reaction remove-all on message {}", event.getMessageId(), e);
+        }
+    }
+
+    @Override
+    public void onMessageReactionRemoveEmoji(@NotNull MessageReactionRemoveEmojiEvent event) {
+        if (!event.isFromGuild()) return;
+
+        try {
+            messageHandler.handleReactionRemoveEmoji(event.getReaction());
+        } catch (Exception e) {
+            log.error("Failed to process live reaction remove-emoji on message {}", event.getMessageId(), e);
         }
     }
 

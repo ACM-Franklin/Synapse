@@ -100,8 +100,28 @@ public interface MessageEventDao {
 
     @SqlUpdate("""
             UPDATE messages
-            SET reaction_count = MAX(reaction_count - 1, 0)
+            SET reaction_count = CASE
+            WHEN reaction_count > 0 THEN reaction_count - 1
+            ELSE 0
+            END
             WHERE id = :messageId
             """)
     void decrementReactionCount(@Bind("messageId") long messageId);
+
+        @SqlUpdate("""
+            UPDATE messages
+            SET reaction_count = CASE
+            WHEN reaction_count > :count THEN reaction_count - :count
+            ELSE 0
+            END
+            WHERE id = :messageId
+            """)
+        void decrementReactionCountBy(@Bind("messageId") long messageId, @Bind("count") int count);
+
+        @SqlUpdate("""
+            UPDATE messages
+            SET reaction_count = 0
+            WHERE id = :messageId
+            """)
+        void clearReactionCount(@Bind("messageId") long messageId);
 }
