@@ -1,14 +1,12 @@
 package edu.franklin.acm.synapse.bot;
 
-import java.util.Map;
-
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import edu.franklin.acm.synapse.activity.guild.SynapseStatisticsDao;
-import edu.franklin.acm.synapse.scanners.GuildHistoricalScanner;
 import edu.franklin.acm.synapse.scanners.GuildLiveScanner;
+import edu.franklin.acm.synapse.scanners.HistoricalScanCoordinator;
 import io.quarkus.runtime.Startup;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -39,7 +37,7 @@ public class SynapseBot {
     private final long guildId;
 
     // Event scanners
-    private final GuildHistoricalScanner guildHistoricalScanner;
+    private final HistoricalScanCoordinator historicalScanCoordinator;
     private final GuildLiveScanner guildLiveScanner;
 
     @Inject SynapseStatisticsDao statisticsDao;
@@ -51,7 +49,7 @@ public class SynapseBot {
      * Constructs the bot with configuration and scanner dependencies.
      * 
      * @param discordToken              the Discord bot token (from discord.token property)
-     * @param guildHistoricalScanner    scanner for backfilling historical guild data
+    * @param historicalScanCoordinator persisted historical scan coordinator
      * @param guildLiveScanner          scanner for live Discord events (guild members, messages, etc.)
      * @param scanHistorical            whether to run a full historical scan on startup
      *                                  (from historical.scan.enabled property, default false)
@@ -60,12 +58,12 @@ public class SynapseBot {
      */
     public SynapseBot(
             @ConfigProperty(name = "synapse.discord.token") String discordToken,
-            GuildHistoricalScanner guildHistoricalScanner,
+            HistoricalScanCoordinator historicalScanCoordinator,
             GuildLiveScanner guildLiveScanner,
             @ConfigProperty(name = "synapse.discord.scan-historical", defaultValue = "false") boolean scanHistorical,
             @ConfigProperty(name = "synapse.discord.guild.id", defaultValue = "0") long guildId) {
         this.discordToken = discordToken;
-        this.guildHistoricalScanner = guildHistoricalScanner;
+        this.historicalScanCoordinator = historicalScanCoordinator;
         this.guildLiveScanner = guildLiveScanner;
         this.historicalScanEnabled = scanHistorical;
         this.guildId = guildId;
@@ -136,12 +134,8 @@ public class SynapseBot {
         }
 
         log.info("Starting historical scan for guild {} ({})", guild.getName(), guild.getIdLong());
-        guildHistoricalScanner.scanGuild(guild, Map.of())
-                .thenRun(() -> log.info("Historical scan completed for guild {}", guild.getIdLong()))
-                .exceptionally(ex -> {
-                    log.error("Historical scan failed for guild {}", guild.getIdLong(), ex);
-                    return null;
-                });
+        long jobId = historicalScanCoordinator.startGuildScan(guild);
+        log.info("Historical scan job {} started for guild {}", jobId, guild.getIdLong());
     }
 
     /**

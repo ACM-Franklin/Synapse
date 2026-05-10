@@ -6,6 +6,8 @@ import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import edu.franklin.acm.synapse.activity.channel.CategoryDao;
 import edu.franklin.acm.synapse.activity.channel.ChannelDao;
 import edu.franklin.acm.synapse.activity.guild.GuildMetadataDao;
+import edu.franklin.acm.synapse.activity.guild.HistoricalScanCheckpointDao;
+import edu.franklin.acm.synapse.activity.guild.HistoricalScanJobDao;
 import edu.franklin.acm.synapse.activity.guild.SynapseStatisticsDao;
 import edu.franklin.acm.synapse.activity.member.MemberDao;
 import edu.franklin.acm.synapse.activity.member.MemberRoleDao;
@@ -74,6 +76,18 @@ public class DaoProducer {
     @ApplicationScoped
     public SynapseStatisticsDao synapseStatisticsDao() {
         return jdbi.onDemand(SynapseStatisticsDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public HistoricalScanJobDao historicalScanJobDao() {
+        return jdbi.onDemand(HistoricalScanJobDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public HistoricalScanCheckpointDao historicalScanCheckpointDao() {
+        return jdbi.onDemand(HistoricalScanCheckpointDao.class);
     }
 
     @Produces

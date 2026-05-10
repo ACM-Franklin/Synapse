@@ -1,21 +1,24 @@
-# Current Task: Ingestion Completeness - Complete Review
+# Current Task: Phase 5 Data Proof Closeout
 
 ## Goal
 
-Close non-speculative live-ingestion gaps from the coverage matrix and leave
-deferred Discord surfaces documented instead of ambiguous.
+Close Phase 5 by upgrading the real DB to the current schema and making the
+proof pass repeatable.
 
 ## Plan
 
-- [x] Confirm exact JDA event syntax for generic channel create/delete/name events.
-- [x] Add meaningful tests proving category rename is live.
-- [x] Add meaningful tests proving thread create/delete/archive/lock are live.
-- [x] Update the coverage matrix and roadmap to remove stale channel/thread ambiguity.
-- [x] Run Maven, schema, diagnostics, and whitespace verification.
+- [x] Capture a live SQLite baseline from the current guild dataset.
+- [x] Lock the first acceptable mismatch category for thread seed messages.
+- [x] Add concrete reconciliation report queries for missing, extra, stale, and deleted records.
+- [x] Sanity-check the reconciliation pack against live data, including deleted-state after the real DB upgrade.
+- [x] Add a repeatable proof report command and validate it against the real DB.
 
 ## Review
 
-- Verified exact JDA channel event signatures before writing tests instead of guessing about handler coverage.
-- Added SQLite-backed `ChannelEventHandlerTest` coverage proving live category rename plus thread create, rename, delete, archive, and lock persistence.
-- Updated the coverage matrix and roadmap so Phase 3 reflects verified live behavior instead of stale ambiguity.
-- Verified with full test suite pass, schema load, clean diagnostics on touched files, and `git diff --check`.
+- Added `DATA_PROOF_LIVE_BASELINE.md` with the first real SQLite snapshot from the active guild dataset, including baseline counts, anchor entities, and integrity findings.
+- Locked the first acceptable mismatch category for thread seed-message counts using the exact JDA `ThreadChannel.getMessageCount()` behavior.
+- Added a real migration file for historical scan state so older databases can be upgraded safely.
+- Added reconciliation queries for missing, orphaned, stale, inactive, and deleted-state checks, then ran them against the live DB.
+- Fixed `MigrationManager` so fresh databases use the schema snapshot while existing databases run upgrade scripts only, which avoids replaying additive migrations onto already-current tables.
+- Added `2_message_delete_state.sql`, applied both real upgrade scripts to `target/synapse.sqlite`, and recorded them in the live `migrations` table.
+- Added `scripts/data-proof-report.sh` and validated it against the upgraded real DB; the full reconciliation set now returns clean zeroes where expected.

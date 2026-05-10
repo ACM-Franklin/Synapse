@@ -4,7 +4,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jdbi.v3.core.Jdbi;
@@ -24,6 +27,15 @@ import jakarta.inject.Singleton;
 @Singleton
 public class MigrationManager implements Runnable {
     private static final Logger log = LoggerFactory.getLogger(MigrationManager.class);
+    private static final Set<String> SNAPSHOT_TABLES = Set.of(
+            "guild_metadata",
+            "synapse_statistics",
+            "channels",
+            "threads",
+            "members",
+            "events",
+            "messages",
+            "roles");
 
     private final Jdbi jdbi;
     private final MigrationDao migrations;
@@ -60,7 +72,11 @@ public class MigrationManager implements Runnable {
     }
 
     private void runMigrations() {
-        runResource(schema, true);
+        if (isFreshDatabase()) {
+            runResource(schema, true);
+            markMigrationsSatisfied();
+            return;
+        }
 
         final var previousMigrations = migrations.getAll();
 
@@ -73,6 +89,34 @@ public class MigrationManager implements Runnable {
             if (successfulRun.isEmpty())  {
                 runResource(file, false);
             }
+        }
+    }
+
+    private boolean isFreshDatabase() {
+        return !hasSnapshotTables();
+    }
+
+    private boolean hasSnapshotTables() {
+        return jdbi.withHandle(handle -> {
+            try (final var tables = handle.getConnection().getMetaData()
+                    .getTables(null, null, "%", new String[] { "TABLE" })) {
+                while (tables.next()) {
+                    final var tableName = tables.getString("TABLE_NAME");
+                    if (tableName != null && SNAPSHOT_TABLES.contains(tableName.toLowerCase(Locale.ROOT))) {
+                        return true;
+                    }
+                }
+
+                return false;
+            } catch (SQLException e) {
+                throw new IllegalStateException("Failed to inspect existing database tables", e);
+            }
+        });
+    }
+
+    private void markMigrationsSatisfied() {
+        for (final var file : migrationFiles) {
+            migrations.commit(file, true);
         }
     }
 
