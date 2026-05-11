@@ -54,4 +54,7 @@ ROADMAP.md
 
 # Synapse
 synapse.sqlite
+data/*.db
+data/*.sqlite
+data/*.sqlite-*
 /old-synapse/

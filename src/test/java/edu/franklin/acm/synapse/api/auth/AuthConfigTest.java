@@ -1,12 +1,11 @@
 package edu.franklin.acm.synapse.api.auth;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.util.Optional;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 class AuthConfigTest {
@@ -35,11 +34,21 @@ class AuthConfigTest {
     @Test
     void oauthConfiguredRequiresBothClientIdAndSecret() {
         AuthConfig cfg = new AuthConfig();
-        cfg.clientId = "id";
-        cfg.clientSecret = "";
+        cfg.clientId = Optional.of("id");
+        cfg.clientSecret = Optional.of("");
         assertFalse(cfg.isOauthConfigured());
 
-        cfg.clientSecret = "secret";
+        cfg.clientSecret = Optional.of("secret");
         assertTrue(cfg.isOauthConfigured());
+    }
+
+    @Test
+    void oauthConfiguredAllowsMissingFrontendCredentials() {
+        AuthConfig cfg = new AuthConfig();
+        cfg.clientId = Optional.empty();
+        cfg.clientSecret = Optional.empty();
+        assertFalse(cfg.isOauthConfigured());
+        assertEquals("", cfg.clientId());
+        assertEquals("", cfg.clientSecret());
     }
 }

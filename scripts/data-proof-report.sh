@@ -4,7 +4,12 @@ set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "$script_dir/.." && pwd)"
-db_path="${1:-$repo_root/target/synapse.sqlite}"
+default_db_path="$repo_root/data/synapse.sqlite"
+if [[ ! -f "$default_db_path" && -f "$repo_root/target/synapse.sqlite" ]]; then
+    default_db_path="$repo_root/target/synapse.sqlite"
+fi
+
+db_path="${1:-$default_db_path}"
 stale_before_ts="${2:-$(date -u +"%Y-%m-%dT%H:%M:%S")}" 
 
 require_sql_count() {
@@ -204,4 +209,43 @@ UNION ALL
 SELECT 'inactive_roles', COUNT(*)
 FROM roles
 WHERE is_active = 0;
+"
+
+printf '\n== Duplicate And Reaction Integrity ==\n'
+sqlite3 -header -column "$db_path" "
+SELECT 'duplicate_message_ext_ids' AS check_name,
+       COUNT(*) AS row_count
+FROM (
+    SELECT ext_id
+    FROM messages
+    GROUP BY ext_id
+    HAVING COUNT(*) > 1
+)
+UNION ALL
+SELECT 'reaction_aggregate_mismatches',
+       COUNT(*)
+FROM (
+    SELECT 1
+    FROM messages m
+    LEFT JOIN message_reactions r ON r.message_id = m.id
+    GROUP BY m.id, m.reaction_count
+    HAVING m.reaction_count != COALESCE(SUM(r.count), 0)
+);
+"
+
+printf '\n== Thread Row Gaps Beyond Expected Starter Message ==\n'
+sqlite3 -header -column "$db_path" "
+SELECT t.ext_id AS thread_ext_id,
+       t.name,
+       t.message_count,
+       COUNT(m.id) AS stored_message_rows,
+       COUNT(m.id) - t.message_count AS row_gap,
+       t.is_archived,
+       t.is_locked,
+       t.is_active
+FROM threads t
+LEFT JOIN messages m ON m.thread_id = t.id
+GROUP BY t.id, t.ext_id, t.name, t.message_count, t.is_archived, t.is_locked, t.is_active
+HAVING ABS(COUNT(m.id) - t.message_count) > 1
+ORDER BY ABS(COUNT(m.id) - t.message_count) DESC, t.ext_id;
 "

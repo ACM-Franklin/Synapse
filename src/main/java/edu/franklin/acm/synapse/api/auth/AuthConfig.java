@@ -18,10 +18,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 @ApplicationScoped
 public class AuthConfig {
 
-    @ConfigProperty(name = "synapse.discord.oauth.client-id", defaultValue = "")
-    String clientId;
-    @ConfigProperty(name = "synapse.discord.oauth.client-secret", defaultValue = "")
-    String clientSecret;
+    @ConfigProperty(name = "synapse.discord.oauth.client-id")
+    Optional<String> clientId;
+    @ConfigProperty(name = "synapse.discord.oauth.client-secret")
+    Optional<String> clientSecret;
     @ConfigProperty(name = "synapse.discord.oauth.redirect-uri")
     String redirectUri;
     @ConfigProperty(name = "synapse.discord.oauth.frontend-redirect-uri")
@@ -51,11 +51,11 @@ public class AuthConfig {
     Optional<String> adminRoleIdsRaw;
 
     public String clientId() {
-        return clientId;
+        return clientId.orElse("");
     }
 
     public String clientSecret() {
-        return clientSecret;
+        return clientSecret.orElse("");
     }
 
     public String redirectUri() {
@@ -121,7 +121,6 @@ public class AuthConfig {
     }
 
     public boolean isOauthConfigured() {
-        return clientId != null && !clientId.isBlank()
-                && clientSecret != null && !clientSecret.isBlank();
+        return !clientId().isBlank() && !clientSecret().isBlank();
     }
 }
