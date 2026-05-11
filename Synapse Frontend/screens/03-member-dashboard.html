@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" /><title>M1 · Member dashboard</title>
+<link rel="stylesheet" href="screen.css" />
+<style>
+  .variant-row { grid-template-columns: 1fr; }
+  .mini-shell { display: grid; grid-template-columns: 220px 1fr; min-height: 760px; }
+  .mini-shell .sb { border-right: 1px solid var(--line); background: var(--bg-1); padding: 14px 10px; display: flex; flex-direction: column; gap: 14px; font-size: 12.5px; }
+  .mini-shell .main { display: flex; flex-direction: column; }
+  .mini-shell .tb { padding: 10px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .mini-shell .pg { padding: 22px 26px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* hero patterns */
+  .hero-1 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .level-card { padding: 22px; display: flex; gap: 22px; align-items: center; }
+  .level-card .ring { --p: 62; --sz: 110px; }
+  .level-card .ring .lvl .n { font-size: 30px; }
+  .level-card .who-block { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .level-card .who-name { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .level-card .role-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .level-card .xp-line { font-family: var(--mono); font-size: 11.5px; color: var(--text-3); }
+  .currency-card { padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; }
+  .currency-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cb {
+    padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--bg-1);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .cb .label { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; color: var(--text-3); text-transform: uppercase; }
+  .cb .val { font-size: 28px; font-weight: 500; font-feature-settings: "tnum"; display: flex; align-items: baseline; gap: 8px; }
+  .cb .val .sym { font-size: 16px; }
+  .cb.coin .val { color: var(--coin); }
+  .cb.token .val { color: var(--token); }
+  .cb .since { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+
+  /* timeline / ledger */
+  .ledger { display: flex; flex-direction: column; }
+  .ledger .row {
+    display: grid; grid-template-columns: 70px 1fr auto;
+    gap: 14px; padding: 12px 0; align-items: start;
+    border-bottom: 1px dashed var(--line-soft);
+  }
+  .ledger .ts { font-family: var(--mono); font-size: 11px; color: var(--text-4); padding-top: 2px; }
+  .ledger .what { font-size: 13px; color: var(--text); display: flex; flex-direction: column; gap: 3px; }
+  .ledger .what .meta { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .ledger .right { display: flex; gap: 6px; align-items: center; }
+
+  /* trace overlay */
+  .trace {
+    position: absolute; inset: 0;
+    background: oklch(0.10 0.01 270 / 0.7);
+    backdrop-filter: blur(2px);
+    display: grid; place-items: center;
+    padding: 40px;
+  }
+  .trace-card {
+    background: var(--bg-1); border: 1px solid var(--line);
+    border-radius: var(--r-lg); width: 720px; max-width: 100%;
+    box-shadow: 0 30px 80px oklch(0.05 0.01 270 / 0.5);
+  }
+  .trace-head { padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; }
+  .trace-head .x { margin-left: auto; color: var(--text-3); font-family: var(--mono); cursor: pointer; }
+  .trace-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; }
+  .step {
+    display: grid; grid-template-columns: 22px 1fr auto;
+    gap: 12px; align-items: start;
+    padding: 10px 12px;
+    border-left: 2px solid var(--line);
+    background: var(--bg-2); border-radius: 0 4px 4px 0;
+  }
+  .step.pass { border-left-color: var(--ok); }
+  .step.fail { border-left-color: var(--err); }
+  .step .check { width: 18px; height: 18px; border: 1.4px solid var(--line); border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: var(--text-3); }
+  .step.pass .check { border-color: var(--ok); color: var(--ok); }
+  .step .title { font-size: 13px; font-weight: 500; }
+  .step .meta { font-family: var(--mono); font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+  .relpos { position: relative; }
+
+  /* v3 — dense single column */
+  .v3-page { padding: 26px 28px; display: flex; flex-direction: column; gap: 18px; }
+  .v3-head { display: flex; gap: 22px; align-items: center; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .v3-head .ident { display: flex; flex-direction: column; gap: 4px; }
+  .v3-head .nm { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+  .v3-head .stats-strip { display: flex; gap: 36px; margin-left: auto; }
+  .v3-head .stats-strip .s { display: flex; flex-direction: column; gap: 2px; align-items: end; }
+  .v3-head .stats-strip .v { font-size: 22px; font-weight: 500; font-feature-settings: "tnum"; }
+  .v3-head .stats-strip .v.coin { color: var(--coin); }
+  .v3-head .stats-strip .v.token { color: var(--token); }
+  .v3-head .stats-strip .l { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase; }
+  .activity-grid {
+    display: grid; grid-template-columns: repeat(53, 1fr); gap: 2px;
+  }
+  .heat { aspect-ratio: 1; border-radius: 1.5px; background: var(--bg-2); }
+  .heat.h1 { background: oklch(0.32 0.06 275 / 0.5); }
+  .heat.h2 { background: oklch(0.42 0.10 275 / 0.7); }
+  .heat.h3 { background: oklch(0.55 0.14 275 / 0.85); }
+  .heat.h4 { background: var(--accent); }
+
+  /* v4 — gamified */
+  .v4-banner {
+    padding: 36px 32px; border-radius: var(--r-lg);
+    background:
+      radial-gradient(ellipse at top right, oklch(0.40 0.14 275 / 0.45), transparent 60%),
+      linear-gradient(180deg, oklch(0.22 0.02 275), oklch(0.18 0.012 270));
+    border: 1px solid var(--line);
+    position: relative; overflow: hidden;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 28px; align-items: center;
+  }
+  .v4-banner::after {
+    content: ""; position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(45deg,
+        oklch(0.30 0.08 275 / 0.04) 0 12px,
+        transparent 12px 24px);
+    pointer-events: none;
+  }
+  .v4-banner .ring-big { --p: 62; --sz: 140px; }
+  .v4-banner .ring-big .lvl .n { font-size: 40px; }
+  .v4-banner .who-name { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+  .v4-banner .level-up {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .currency-pill {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 999px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    font-family: var(--mono); font-size: 13px;
+  }
+  .currency-pill .sym { font-size: 11px; color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase; }
+  .badges-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge-future {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: var(--bg-2); border: 1px dashed var(--line);
+    display: grid; place-items: center;
+    font-family: var(--mono); font-size: 9.5px; color: var(--text-4); letter-spacing: 0.08em;
+  }
+  .badge {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: oklch(0.30 0.08 275 / 0.40);
+    border: 1px solid var(--accent-dim);
+    display: grid; place-items: center;
+    color: var(--accent); font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em;
+  }
+</style>
+</head>
+<body>
+
+<div class="screen-head">
+  <div><div class="num">M1 · member</div><h1>My profile + reward trace</h1></div>
+  <div class="desc">Member-facing home. Calm gamification: XP ring, currency pills, activity, recent rewards. Every reward expands into a "why did I get this?" trace overlay — the product's transparency promise made tactile.</div>
+  <div class="right"><a href="../index.html" class="back">← back</a></div>
+</div>
+
+<div class="canvas">
+
+<!-- v1 — balanced -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v1</span><span class="v-name">Balanced — XP, currencies, ledger, trace</span><span class="v-tag">recommended</span></div>
+  <p class="variant-desc">Hero is identity + level + currencies. Ledger is the second-most-important block, and every row is a one-click trace. Activity heatmap and rank rail on the right.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · me</div></div>
+    <div class="mini-shell">
+      <aside class="sb">
+        <div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div><div class="brand-sub">acm-franklin</div></div></div>
+        <div class="guild"><div class="guild-icon">A</div><div><div class="guild-name">ACM @ Franklin</div><div class="guild-id">1 209…</div></div></div>
+        <div class="nav-group">
+          <div class="nav-label">member</div>
+          <a class="nav-item active"><span class="ic cr"></span> My profile</a>
+          <a class="nav-item"><span class="ic bar"></span> Leaderboard</a>
+          <a class="nav-item"><span class="ic sq"></span> Members</a>
+          <a class="nav-item"><span class="ic di"></span> Seasons</a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">future</div>
+          <a class="nav-item" style="opacity: 0.4;"><span class="ic cr"></span> Achievements</a>
+          <a class="nav-item" style="opacity: 0.4;"><span class="ic sq"></span> Marketplace</a>
+        </div>
+        <div style="margin-top: auto; padding: 10px; border-top: 1px solid var(--line-soft); font-family: var(--mono); font-size: 10.5px; color: var(--text-3);">
+          @maria.cho<br/><span style="color: var(--accent); font-size: 10.5px;">switch to admin →</span>
+        </div>
+      </aside>
+      <div class="main">
+        <div class="tb"><span>me / overview</span><span class="dim" style="margin-left: auto;">season 3 · spring '26 · 23d remain</span></div>
+        <div class="pg">
+          <div class="hero-1">
+            <div class="card level-card">
+              <div class="ring"><div class="lvl"><div class="n">12</div><div class="l">level</div></div></div>
+              <div class="who-block">
+                <div class="who-name">Maria Cho</div>
+                <div class="dim mono" style="font-size: 11px;">@maria.cho · joined Sep 2024</div>
+                <div class="role-row"><span class="tag accent">@member</span><span class="tag">@cs-major</span><span class="tag">@officer</span></div>
+                <div class="xpbar" style="margin-top: 8px;"><span style="width: 62%;"></span></div>
+                <div class="xp-line">2 480 / 4 000 xp · 1 520 to lvl 13</div>
+              </div>
+            </div>
+            <div class="card currency-card">
+              <div class="section-title">Wallet</div>
+              <div class="currency-row">
+                <div class="cb coin"><div class="label">coins · primary</div><div class="val">1 248 <span class="sym dim">coins</span></div><div class="since">+128 this week</div></div>
+                <div class="cb token"><div class="label">tokens · secondary</div><div class="val">14 <span class="sym dim">tokens</span></div><div class="since">+2 this week</div></div>
+              </div>
+              <div class="dim" style="font-size: 12px;">Earned by triggering admin-defined rules. Tap any reward below to see the rule that fired and why.</div>
+            </div>
+          </div>
+
+          <div class="card" style="padding: 14px 18px;">
+            <div class="hstack" style="justify-content: space-between; margin-bottom: 8px;">
+              <div class="section-title">Recent rewards · ledger</div>
+              <div class="hstack mono" style="font-size: 11px; color: var(--text-3);"><span>filter</span><span class="tag">all rules</span><span class="tag">all currencies</span></div>
+            </div>
+            <div class="ledger">
+              <div class="row"><span class="ts">14:08</span><span class="what"><span><b>helpful_reply</b> matched on a message in <span class="mono dim">#general</span></span><span class="meta">predicates: in #general · ≥40 chars · not your own thread · cooldown ok</span></span><span class="right"><span class="tag coin">+25</span><span class="tag xp">+40</span><span class="kbd">why?</span></span></div>
+              <div class="row"><span class="ts">13:42</span><span class="what"><span><b>voice_attendance</b> on <span class="mono dim">voice/study-room</span> · 47m</span><span class="meta">predicates: ≥10 min · not afk channel</span></span><span class="right"><span class="tag coin">+47</span><span class="kbd">why?</span></span></div>
+              <div class="row"><span class="ts">11:20</span><span class="what"><span><b>forum_post</b> opened thread "Fast hash collisions"</span><span class="meta">predicates: in forum/help · tagged #algorithms</span></span><span class="right"><span class="tag token">+1</span><span class="tag xp">+80</span><span class="kbd">why?</span></span></div>
+              <div class="row"><span class="ts">09:14</span><span class="what"><span><b>reaction_thanks</b> · @ren.lin reacted ✨ to your message</span><span class="meta">predicates: distinct reactor · not bot</span></span><span class="right"><span class="tag coin">+5</span><span class="kbd">why?</span></span></div>
+              <div class="row"><span class="ts">yest 22:01</span><span class="what"><span><b>weekly_streak</b> · 4 days in a row active</span><span class="meta">predicates: ≥1 message_received per day · 4 day window</span></span><span class="right"><span class="tag coin">+50</span><span class="tag xp">+100</span><span class="kbd">why?</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v2 — with trace overlay open -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v2</span><span class="v-name">Reward trace overlay — opened</span><span class="v-tag">explainability</span></div>
+  <p class="variant-desc">The "why?" pop-up shows the originating Discord event, the matched rule, every predicate's pass/fail, and the outcome math. This is the product's transparency promise made literal.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · me / reward · #ev-84102</div></div>
+    <div class="mini-shell relpos">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div></aside>
+      <div class="main">
+        <div class="tb"><span>me / overview</span></div>
+        <div class="pg" style="filter: blur(0.5px); opacity: 0.7;">
+          <div class="hero-1">
+            <div class="card level-card"><div class="ring"><div class="lvl"><div class="n">12</div><div class="l">level</div></div></div><div class="who-block"><div class="who-name">Maria Cho</div></div></div>
+            <div class="card currency-card"><div class="currency-row"><div class="cb coin"><div class="label">coins</div><div class="val">1 248</div></div><div class="cb token"><div class="label">tokens</div><div class="val">14</div></div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="trace">
+        <div class="trace-card">
+          <div class="trace-head">
+            <div class="ic di" style="color: var(--accent);"></div>
+            <div>
+              <div style="font-size: 16px; font-weight: 500;">Why did I get +25 coins, +40 xp?</div>
+              <div class="mono dim" style="font-size: 11px;">rule · helpful_reply · fired 14:08:22 on event_id 84102</div>
+            </div>
+            <span class="x">esc · ✕</span>
+          </div>
+          <div class="trace-body">
+            <div class="vstack" style="gap: 4px;">
+              <div class="section-title">Originating event</div>
+              <div class="card" style="padding: 12px 14px; background: var(--bg-2);">
+                <div class="hstack" style="justify-content: space-between;"><span class="tag">message_received</span><span class="mono dim" style="font-size: 11px;">ext_id · 1 220 938 419 286 624</span></div>
+                <div class="mono" style="font-size: 12.5px; color: var(--text-2); margin-top: 8px; padding: 8px 10px; border-left: 2px solid var(--accent-dim); background: oklch(0.30 0.08 275 / 0.10);">
+                  "Yeah — sounds like your hash table is colliding. Try checking the load factor before reaching for a different algorithm; quadratic probing is fine up to ~0.7."
+                </div>
+                <div class="hstack mono dim" style="font-size: 11px; margin-top: 8px;"><span>#general</span><span>·</span><span>147 chars</span><span>·</span><span>not a reply</span></div>
+              </div>
+            </div>
+            <div class="vstack" style="gap: 4px;">
+              <div class="section-title">Predicate trace · 4 of 4 pass</div>
+              <div class="step pass"><span class="check">✓</span><div><div class="title">channel_in #general · #help · #cs-talk</div><div class="meta">channel · #general · ext_id 8203…</div></div><span class="tag" style="color: var(--ok);">pass</span></div>
+              <div class="step pass"><span class="check">✓</span><div><div class="title">message_length ≥ 40</div><div class="meta">147 chars ≥ 40</div></div><span class="tag" style="color: var(--ok);">pass</span></div>
+              <div class="step pass"><span class="check">✓</span><div><div class="title">not_own_thread</div><div class="meta">message is not in a thread you started</div></div><span class="tag" style="color: var(--ok);">pass</span></div>
+              <div class="step pass"><span class="check">✓</span><div><div class="title">cooldown 60s · last fire 4m ago</div><div class="meta">last fired 14:04:18 → 4m 4s ≥ 60s</div></div><span class="tag" style="color: var(--ok);">pass</span></div>
+            </div>
+            <div class="vstack" style="gap: 4px;">
+              <div class="section-title">Outcomes</div>
+              <div class="hstack" style="gap: 10px;">
+                <span class="tag coin">+25 coins</span>
+                <span class="tag xp">+40 xp</span>
+                <span class="dim mono" style="font-size: 11px; margin-left: auto;">rule_evaluation_id · 9 410 322</span>
+              </div>
+            </div>
+            <div class="hstack" style="justify-content: flex-end; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line-soft);">
+              <button class="btn ghost">View rule</button>
+              <button class="btn ghost">Open in Discord ↗</button>
+              <button class="btn">Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v3 — analytic / dense -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v3</span><span class="v-name">Analytic — heatmap, rank, trends</span><span class="v-tag">data forward</span></div>
+  <p class="variant-desc">For the member who wants the "stats page" feeling. GitHub-style activity heatmap, rank trajectory, top channels, no celebration. Reward ledger remains, denser.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · me</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">member</div>
+          <a class="nav-item active">My profile</a><a class="nav-item">Leaderboard</a><a class="nav-item">Members</a><a class="nav-item">Seasons</a>
+        </div>
+      </aside>
+      <div class="main">
+        <div class="tb"><span>me · stats</span></div>
+        <div class="v3-page">
+          <div class="v3-head">
+            <div class="avatar xl h0">M</div>
+            <div class="ident"><div class="nm">Maria Cho</div><div class="dim mono" style="font-size: 11.5px;">@maria.cho · joined Sep 2024 · level 12</div>
+              <div class="role-row" style="margin-top: 4px;"><span class="tag accent">@officer</span><span class="tag">@cs-major</span><span class="tag">@member</span></div>
+            </div>
+            <div class="stats-strip">
+              <div class="s"><div class="v coin">1 248</div><div class="l">coins</div></div>
+              <div class="s"><div class="v token">14</div><div class="l">tokens</div></div>
+              <div class="s"><div class="v">2 480</div><div class="l">xp · season 3</div></div>
+              <div class="s"><div class="v">#7</div><div class="l">rank · season 3</div></div>
+            </div>
+          </div>
+
+          <div class="card" style="padding: 16px 18px;">
+            <div class="hstack" style="justify-content: space-between; margin-bottom: 14px;">
+              <div class="section-title">Activity · last 53 weeks</div>
+              <div class="hstack dim mono" style="font-size: 11px;"><span>less</span><span class="heat" style="width: 11px;"></span><span class="heat h1" style="width: 11px;"></span><span class="heat h2" style="width: 11px;"></span><span class="heat h3" style="width: 11px;"></span><span class="heat h4" style="width: 11px;"></span><span>more</span></div>
+            </div>
+            <div class="activity-grid">
+              <!-- 53 weeks * 7 days = 371 cells; for compactness 53 cells (one column per week) -->
+              <span class="heat"></span><span class="heat h1"></span><span class="heat"></span><span class="heat h2"></span><span class="heat h1"></span><span class="heat"></span><span class="heat h3"></span><span class="heat h2"></span><span class="heat h3"></span><span class="heat h4"></span><span class="heat h2"></span><span class="heat h1"></span><span class="heat"></span><span class="heat h1"></span><span class="heat h2"></span><span class="heat h3"></span><span class="heat h4"></span><span class="heat h3"></span><span class="heat h4"></span><span class="heat h4"></span><span class="heat h3"></span><span class="heat h2"></span><span class="heat h3"></span><span class="heat h4"></span><span class="heat h4"></span><span class="heat h3"></span><span class="heat h2"></span><span class="heat h3"></span><span class="heat h4"></span><span class="heat h4"></span><span class="heat h3"></span><span class="heat h4"></span><span class="heat h2"></span><span class="heat h3"></span><span class="heat h4"></span><span class="heat h3"></span><span class="heat h4"></span><span class="heat h4"></span><span class="heat h3"></span><span class="heat h2"></span><span class="heat h1"></span><span class="heat h2"></span><span class="heat h3"></span><span class="heat h4"></span><span class="heat h4"></span><span class="heat h3"></span><span class="heat h4"></span><span class="heat h2"></span><span class="heat h3"></span><span class="heat h4"></span><span class="heat h3"></span><span class="heat h4"></span><span class="heat h3"></span>
+            </div>
+          </div>
+
+          <div class="hero-1">
+            <div class="card" style="padding: 14px 18px;">
+              <div class="section-title">By rule · this season</div>
+              <table class="tbl" style="margin-top: 8px;">
+                <tr><th>rule</th><th class="mono" style="text-align: right;">fires</th><th class="mono" style="text-align: right;">coins</th><th class="mono" style="text-align: right;">xp</th></tr>
+                <tr><td class="mono">helpful_reply</td><td class="mono" style="text-align: right;">42</td><td class="mono" style="text-align: right; color: var(--coin);">1 050</td><td class="mono" style="text-align: right; color: var(--xp);">1 680</td></tr>
+                <tr><td class="mono">voice_attendance</td><td class="mono" style="text-align: right;">12</td><td class="mono" style="text-align: right; color: var(--coin);">198</td><td class="mono" style="text-align: right;">—</td></tr>
+                <tr><td class="mono">weekly_streak</td><td class="mono" style="text-align: right;">3</td><td class="mono" style="text-align: right; color: var(--coin);">150</td><td class="mono" style="text-align: right; color: var(--xp);">300</td></tr>
+                <tr><td class="mono">forum_post</td><td class="mono" style="text-align: right;">2</td><td class="mono" style="text-align: right;">—</td><td class="mono" style="text-align: right; color: var(--xp);">160</td></tr>
+              </table>
+            </div>
+            <div class="card" style="padding: 14px 18px;">
+              <div class="section-title">Top channels · season</div>
+              <div class="vstack" style="margin-top: 10px; gap: 12px;">
+                <div class="bar-row"><span class="mono" style="width: 130px;">#general</span><div class="bar"><span style="width: 78%;"></span></div><span class="mono dim">312</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">#cs-talk</span><div class="bar"><span style="width: 52%;"></span></div><span class="mono dim">208</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">voice/study-room</span><div class="bar"><span style="width: 36%;"></span></div><span class="mono dim">144 m</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">forum/help</span><div class="bar"><span style="width: 22%;"></span></div><span class="mono dim">88</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">#announcements</span><div class="bar"><span style="width: 8%;"></span></div><span class="mono dim">31</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="padding: 14px 18px;">
+            <div class="section-title">Recent rewards</div>
+            <div class="ledger" style="margin-top: 8px;">
+              <div class="row"><span class="ts">14:08</span><span class="what"><span><b>helpful_reply</b> · #general</span></span><span class="right"><span class="tag coin">+25</span><span class="tag xp">+40</span></span></div>
+              <div class="row"><span class="ts">13:42</span><span class="what"><span><b>voice_attendance</b> · 47m</span></span><span class="right"><span class="tag coin">+47</span></span></div>
+              <div class="row"><span class="ts">11:20</span><span class="what"><span><b>forum_post</b> · "hash collisions"</span></span><span class="right"><span class="tag token">+1</span><span class="tag xp">+80</span></span></div>
+              <div class="row"><span class="ts">09:14</span><span class="what"><span><b>reaction_thanks</b> from @ren.lin</span></span><span class="right"><span class="tag coin">+5</span></span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v4 — gamified -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v4</span><span class="v-name">Gentle gamification — banner + badges</span><span class="v-tag">member-leaning</span></div>
+  <p class="variant-desc">Most celebratory of the four — but pulled back from neon. Hero banner, level-up callout, currency pills, badge wall (future-state stubbed). Same ledger underneath.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · me</div></div>
+    <div class="mini-shell">
+      <aside class="sb">
+        <div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">member</div>
+          <a class="nav-item active">My profile</a><a class="nav-item">Leaderboard</a><a class="nav-item">Members</a><a class="nav-item">Seasons</a>
+        </div>
+      </aside>
+      <div class="main">
+        <div class="tb"><span>me · season 3</span><span class="dim" style="margin-left: auto;">23 days remain</span></div>
+        <div class="pg">
+          <div class="v4-banner">
+            <div class="ring ring-big"><div class="lvl"><div class="n">12</div><div class="l">level</div></div></div>
+            <div class="vstack" style="gap: 8px;">
+              <div class="level-up">+ levelled up 2 days ago</div>
+              <div class="who-name">Maria Cho</div>
+              <div class="dim mono" style="font-size: 11.5px;">@maria.cho · #7 in season 3 · ↑ 3 ranks this week</div>
+              <div class="xpbar" style="margin-top: 6px;"><span style="width: 62%;"></span></div>
+              <div class="dim mono" style="font-size: 11px;">2 480 / 4 000 xp</div>
+            </div>
+            <div class="vstack" style="align-items: end; gap: 10px;">
+              <div class="currency-pill" style="color: var(--coin);"><span class="sym">coins</span><b>1 248</b></div>
+              <div class="currency-pill" style="color: var(--token);"><span class="sym">tokens</span><b>14</b></div>
+            </div>
+          </div>
+
+          <div class="card" style="padding: 14px 18px;">
+            <div class="hstack" style="justify-content: space-between; margin-bottom: 12px;">
+              <div class="section-title">Achievements</div>
+              <span class="note b">future-state UI · stubbed</span>
+            </div>
+            <div class="badges-row">
+              <div class="badge">FIRST POST</div>
+              <div class="badge">10 DAY STREAK</div>
+              <div class="badge">VOICE 1H</div>
+              <div class="badge-future">soon</div>
+              <div class="badge-future">soon</div>
+              <div class="badge-future">soon</div>
+              <div class="badge-future">soon</div>
+              <div class="badge-future">soon</div>
+            </div>
+          </div>
+
+          <div class="card" style="padding: 14px 18px;">
+            <div class="section-title">Recent rewards</div>
+            <div class="ledger" style="margin-top: 8px;">
+              <div class="row"><span class="ts">14:08</span><span class="what"><span><b>helpful_reply</b> matched on a message in <span class="mono dim">#general</span></span><span class="meta">+25 coins · +40 xp</span></span><span class="right"><span class="kbd">why?</span></span></div>
+              <div class="row"><span class="ts">13:42</span><span class="what"><span><b>voice_attendance</b> · 47m</span><span class="meta">+47 coins</span></span><span class="right"><span class="kbd">why?</span></span></div>
+              <div class="row"><span class="ts">11:20</span><span class="what"><span><b>forum_post</b> · "Fast hash collisions"</span><span class="meta">+1 token · +80 xp</span></span><span class="right"><span class="kbd">why?</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body></html>

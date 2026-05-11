@@ -1,0 +1,78 @@
+/* per-screen wireframe page layout */
+@import url('../styles.css');
+
+body { padding: 0; min-height: 100vh; }
+
+.screen-head {
+  padding: 36px 40px 22px;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: end; gap: 24px;
+  background: var(--bg-0);
+  position: sticky; top: 0; z-index: 10;
+}
+.screen-head .back {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  color: var(--text-3); text-decoration: none; text-transform: uppercase;
+}
+.screen-head .back:hover { color: var(--text); }
+.screen-head h1 {
+  font-size: 26px; font-weight: 600; letter-spacing: -0.01em; margin: 0;
+}
+.screen-head .num {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  color: var(--text-4); text-transform: uppercase; margin-bottom: 4px;
+}
+.screen-head .desc { color: var(--text-3); font-size: 13.5px; max-width: 640px; }
+.screen-head .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+.canvas {
+  background:
+    radial-gradient(circle at 1px 1px, oklch(0.24 0.012 270) 1px, transparent 0) 0 0 / 24px 24px,
+    var(--bg-0);
+  padding: 40px;
+  display: flex; flex-direction: column; gap: 60px;
+}
+
+.variant-row {
+  display: grid; gap: 28px;
+}
+
+.variant {
+  display: flex; flex-direction: column; gap: 12px;
+}
+.variant-head {
+  display: flex; gap: 12px; align-items: baseline;
+}
+.variant-head .v-num {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  color: var(--accent); text-transform: uppercase;
+}
+.variant-head .v-name { font-size: 15px; font-weight: 500; }
+.variant-head .v-tag {
+  font-family: var(--mono); font-size: 10.5px; color: var(--text-3);
+  padding: 2px 8px; border: 1px solid var(--line-soft); border-radius: 999px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.variant-desc { color: var(--text-3); font-size: 12.5px; max-width: 720px; }
+
+.artboard {
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+  box-shadow: 0 8px 28px oklch(0.10 0.01 270 / 0.5);
+}
+.artboard .browser {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px;
+  background: oklch(0.13 0.01 270);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--mono); font-size: 11px; color: var(--text-4);
+}
+.artboard .browser .dots { display: flex; gap: 5px; }
+.artboard .browser .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--bg-3); display: inline-block; }
+.artboard .browser .url {
+  flex: 1; padding: 3px 10px; background: var(--bg-1); border-radius: 4px;
+  border: 1px solid var(--line); color: var(--text-3); text-align: center;
+}
+.artboard .body { display: block; }

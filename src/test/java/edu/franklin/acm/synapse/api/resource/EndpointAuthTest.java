@@ -1,16 +1,15 @@
 package edu.franklin.acm.synapse.api.resource;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-
 import java.util.Set;
 
+import static org.hamcrest.Matchers.equalTo;
 import org.junit.jupiter.api.Test;
 
 import edu.franklin.acm.synapse.api.auth.AuthConfig;
 import edu.franklin.acm.synapse.api.auth.SessionStore;
 import edu.franklin.acm.synapse.api.auth.UserSession;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.restassured.RestAssured.given;
 import jakarta.inject.Inject;
 
 /**

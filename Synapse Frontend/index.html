@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Synapse Frontend — Wireframe Index</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  body { padding: 0; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 56px 32px 80px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em;
+    color: var(--accent); text-transform: uppercase;
+  }
+  .eyebrow .dot { background: var(--accent); }
+  h1 { font-size: 44px; font-weight: 500; letter-spacing: -0.02em; margin: 14px 0 8px; max-width: 820px; }
+  h1 em { font-style: normal; color: var(--accent); }
+  .lede { color: var(--text-2); max-width: 720px; font-size: 16px; line-height: 1.55; }
+  h2 { font-size: 13px; font-weight: 500; font-family: var(--mono); letter-spacing: 0.08em; color: var(--text-3); text-transform: uppercase; margin: 56px 0 16px; }
+  h2::before { content: ""; display: inline-block; width: 28px; height: 1px; background: var(--text-4); margin-right: 12px; vertical-align: middle; }
+
+  .meta-row { display: flex; gap: 28px; margin-top: 28px; flex-wrap: wrap; }
+  .meta { display: flex; flex-direction: column; gap: 4px; min-width: 160px; }
+  .meta .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-4); }
+  .meta .v { color: var(--text); font-size: 13px; }
+
+  /* IA tree */
+  .ia {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+  }
+  .ia .col { padding: 18px 20px; }
+  .ia h3 {
+    font-size: 12px; font-family: var(--mono); letter-spacing: 0.08em;
+    color: var(--text-3); text-transform: uppercase;
+    margin: 0 0 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .ia h3 .pill {
+    padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px;
+    color: var(--text-2); font-weight: 400;
+  }
+  .ia ul { list-style: none; padding: 0; margin: 0; }
+  .ia li {
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--line-soft);
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13.5px;
+  }
+  .ia li:last-child { border-bottom: none; }
+  .ia li .num { font-family: var(--mono); font-size: 10.5px; color: var(--text-4); width: 22px; }
+  .ia li .arrow { margin-left: auto; color: var(--text-4); font-family: var(--mono); }
+
+  /* screen index cards */
+  .screens {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  }
+  .screen-card {
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+    text-decoration: none; color: inherit;
+    transition: border-color 120ms;
+  }
+  .screen-card:hover { border-color: var(--accent-dim); }
+  .screen-card .num { font-family: var(--mono); font-size: 10.5px; color: var(--text-4); }
+  .screen-card .title { font-size: 15px; font-weight: 500; }
+  .screen-card .desc { font-size: 12.5px; color: var(--text-3); line-height: 1.5; }
+  .screen-card .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .screen-card .preview {
+    height: 92px; margin: -16px -16px 6px; border-bottom: 1px solid var(--line-soft);
+    background:
+      linear-gradient(180deg, oklch(0.21 0.013 270), oklch(0.18 0.012 270));
+    position: relative; overflow: hidden;
+  }
+  .screen-card .preview svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  /* user flows */
+  .flows { display: flex; flex-direction: column; gap: 18px; }
+  .flow {
+    padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+    flex-wrap: wrap;
+  }
+  .flow .name { font-size: 13px; font-weight: 500; min-width: 200px; }
+  .flow .actor {
+    font-family: var(--mono); font-size: 10.5px; color: var(--text-3);
+    padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px;
+  }
+  .flow .actor.member { color: var(--coin); border-color: oklch(0.50 0.09 80); }
+  .flow .actor.admin { color: var(--accent); border-color: var(--accent-dim); }
+  .step {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 4px; font-size: 12px;
+  }
+  .step .n { font-family: var(--mono); font-size: 10px; color: var(--text-4); }
+  .arrow-step { color: var(--text-4); font-family: var(--mono); font-size: 13px; }
+
+  /* design system swatches */
+  .ds-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .swatch { padding: 12px; }
+  .swatch .chip { height: 56px; border-radius: 6px; margin-bottom: 10px; border: 1px solid oklch(0.30 0.014 270 / 0.5); }
+  .swatch .name { font-family: var(--mono); font-size: 11px; color: var(--text); }
+  .swatch .val  { font-family: var(--mono); font-size: 10px; color: var(--text-4); }
+
+  /* type stack */
+  .type-row {
+    display: grid; grid-template-columns: 100px 1fr 200px;
+    gap: 16px; align-items: baseline;
+    padding: 14px 16px; border-bottom: 1px solid var(--line-soft);
+  }
+  .type-row:last-child { border-bottom: none; }
+  .type-row .role { font-family: var(--mono); font-size: 10.5px; color: var(--text-4); letter-spacing: 0.08em; text-transform: uppercase; }
+  .type-row .specimen { color: var(--text); }
+  .type-row .meta-line { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); }
+
+  /* component preview row */
+  .comp-row {
+    padding: 16px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+  }
+  .comp-row .label { font-family: var(--mono); font-size: 10.5px; color: var(--text-4); width: 130px; letter-spacing: 0.08em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow"><span class="dot"></span> Wireframe pack · low-color · structure-forward</div>
+  <h1>A frontend for <em>Synapse</em>, the community engagement engine for one Discord guild.</h1>
+  <p class="lede">
+    Synapse is not a SaaS, not multi-tenant, and not a moderation tool. It is one instance, one guild, and an
+    immutable event lake on which a configurable rule engine awards XP and currency. The product earns its keep
+    on transparency, explainability, and admin control. The frontend has to feel that way too.
+  </p>
+
+  <div class="meta-row">
+    <div class="meta"><span class="k">Audience</span><span class="v">Admins + members, separate modes</span></div>
+    <div class="meta"><span class="k">Tone</span><span class="v">Mixed — calm admin, gentle member gamification</span></div>
+    <div class="meta"><span class="k">Theme</span><span class="v">Discord-adjacent dark, restrained blurple</span></div>
+    <div class="meta"><span class="k">Type</span><span class="v">IBM Plex Sans · IBM Plex Mono</span></div>
+    <div class="meta"><span class="k">Variants</span><span class="v">3–4 per screen</span></div>
+  </div>
+
+  <!-- ─────────────── IA ─────────────── -->
+  <h2>Information architecture</h2>
+  <div class="ia">
+    <div class="col card">
+      <h3><span>Admin mode</span><span class="pill">requires admin role</span></h3>
+      <ul>
+        <li><span class="num">01</span> Overview — guild health, scanner state, rule activity <span class="arrow">→</span></li>
+        <li><span class="num">02</span> Event lake — tail · search · charts · taxonomy <span class="arrow">→</span></li>
+        <li><span class="num">03</span> Rules — list, editor, evaluation log <span class="arrow">→</span></li>
+        <li><span class="num">04</span> Members — directory + member detail with reward audit <span class="arrow">→</span></li>
+        <li><span class="num">05</span> Channels &amp; categories — opt in/out, scan provenance <span class="arrow">→</span></li>
+        <li><span class="num">06</span> Seasons — windows + seasonal stats <span class="arrow">→</span></li>
+        <li><span class="num">07</span> Historical scan — channel pick · range · ingest vs reward <span class="arrow">→</span></li>
+        <li><span class="num">08</span> Settings — currency names, admin roles, instance state <span class="arrow">→</span></li>
+      </ul>
+    </div>
+    <div class="col card">
+      <h3><span>Member mode</span><span class="pill">guild members only</span></h3>
+      <ul>
+        <li><span class="num">M1</span> My profile — level, currencies, recent rewards <span class="arrow">→</span></li>
+        <li><span class="num">M2</span> Why did I get this? — reward trace per event <span class="arrow">→</span></li>
+        <li><span class="num">M3</span> Leaderboard — current season, all-time, by metric <span class="arrow">→</span></li>
+        <li><span class="num">M4</span> Other members — public profiles (read-only) <span class="arrow">→</span></li>
+        <li><span class="num">M5</span> Seasons — past standings <span class="arrow">→</span></li>
+        <li><span class="num">F1</span> <span class="muted">Achievements (future)</span> <span class="arrow">⌖</span></li>
+        <li><span class="num">F2</span> <span class="muted">Marketplace + inventory (future)</span> <span class="arrow">⌖</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="note" style="margin-top: 16px; max-width: 920px;">
+    Auth is Discord OAuth. Guild non-members see a connect screen. Members land on M1. Admins get a mode
+    switcher in the topbar. One product ambiguity: a doc proposes a public unauthenticated leaderboard —
+    designed as an opt-in variant, not the default.
+  </p>
+
+  <!-- ─────────────── primary user flows ─────────────── -->
+  <h2>Primary user flows</h2>
+  <div class="flows">
+
+    <div class="flow card">
+      <div class="actor admin">admin</div>
+      <div class="name">First-run: connect a guild &amp; backfill</div>
+      <div class="step"><span class="n">1</span> OAuth</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">2</span> Pick guild · grant admin</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">3</span> Configure currencies</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">4</span> Choose channels to scan</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">5</span> Date range &amp; ingest-only / with-rewards</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">6</span> Watch progress · land on Overview</div>
+    </div>
+
+    <div class="flow card">
+      <div class="actor admin">admin</div>
+      <div class="name">Author a new rule</div>
+      <div class="step"><span class="n">1</span> Pick event type from taxonomy</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">2</span> Add ordered AND predicates</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">3</span> Define outcomes (currency / level / role)</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">4</span> Toggles &amp; cooldown</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">5</span> Test against last 24h</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">6</span> Enable</div>
+    </div>
+
+    <div class="flow card">
+      <div class="actor admin">admin</div>
+      <div class="name">Audit a member's balance</div>
+      <div class="step"><span class="n">1</span> Members table → row</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">2</span> Profile</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">3</span> Rewards ledger</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">4</span> Click row → originating event + matched rule</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">5</span> Predicate-by-predicate trace</div>
+    </div>
+
+    <div class="flow card">
+      <div class="actor member">member</div>
+      <div class="name">"Why did I get this?"</div>
+      <div class="step"><span class="n">1</span> Profile</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">2</span> Recent rewards card</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">3</span> Tap entry</div>
+      <div class="arrow-step">→</div>
+      <div class="step"><span class="n">4</span> Trace overlay: event · rule · matched predicates · outcome</div>
+    </div>
+
+  </div>
+
+  <!-- ─────────────── screen index ─────────────── -->
+  <h2>Screen index — open any to see 3–4 variants side-by-side</h2>
+  <div class="screens">
+
+    <a class="screen-card card" href="screens/01-login.html">
+      <div class="preview">
+        <svg viewBox="0 0 200 92" preserveAspectRatio="none">
+          <rect x="60" y="20" width="80" height="52" rx="6" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="70" y="30" width="60" height="6" rx="2" fill="oklch(0.32 0.018 270)"/>
+          <rect x="70" y="42" width="60" height="14" rx="3" fill="oklch(0.66 0.16 275)"/>
+        </svg>
+      </div>
+      <div class="num">01 · auth</div>
+      <div class="title">Login &amp; guild connect</div>
+      <div class="desc">OAuth landing, guild authorization, non-member fallback, admin-promotion flow.</div>
+      <div class="row"><span class="tag">3 variants</span><span class="tag accent">discord oauth</span></div>
+    </a>
+
+    <a class="screen-card card" href="screens/02-admin-dashboard.html">
+      <div class="preview">
+        <svg viewBox="0 0 200 92" preserveAspectRatio="none">
+          <rect x="14" y="14" width="40" height="64" rx="3" fill="oklch(0.195 0.013 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="62" y="14" width="40" height="20" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="106" y="14" width="40" height="20" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="150" y="14" width="36" height="20" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="62" y="40" width="124" height="38" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <polyline points="68,72 80,60 92,66 104,52 116,60 128,48 140,56 152,44 164,50 178,42" stroke="oklch(0.66 0.16 275)" fill="none" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="num">02 · admin</div>
+      <div class="title">Admin dashboard</div>
+      <div class="desc">Guild health, scanner state, rule activity, recent evaluations, system controls.</div>
+      <div class="row"><span class="tag">4 variants</span><span class="tag">density study</span></div>
+    </a>
+
+    <a class="screen-card card" href="screens/03-member-dashboard.html">
+      <div class="preview">
+        <svg viewBox="0 0 200 92" preserveAspectRatio="none">
+          <circle cx="40" cy="46" r="22" fill="none" stroke="oklch(0.32 0.018 270)" stroke-width="4"/>
+          <circle cx="40" cy="46" r="22" fill="none" stroke="oklch(0.66 0.16 275)" stroke-width="4" stroke-dasharray="90 138" transform="rotate(-90 40 46)"/>
+          <text x="40" y="50" text-anchor="middle" fill="oklch(0.94 0.005 270)" font-size="14" font-family="IBM Plex Mono">12</text>
+          <rect x="76" y="22" width="110" height="14" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="76" y="42" width="110" height="14" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="76" y="62" width="110" height="14" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+        </svg>
+      </div>
+      <div class="num">M1 · member</div>
+      <div class="title">My profile + reward trace</div>
+      <div class="desc">XP, currencies, recent rewards with explainable "why" overlay. Calm gamification.</div>
+      <div class="row"><span class="tag">4 variants</span><span class="tag coin">currency</span><span class="tag xp">xp</span></div>
+    </a>
+
+    <a class="screen-card card" href="screens/04-rules-editor.html">
+      <div class="preview">
+        <svg viewBox="0 0 200 92" preserveAspectRatio="none">
+          <rect x="14" y="18" width="172" height="14" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="14" y="38" width="40" height="14" rx="3" fill="oklch(0.30 0.08 275 / 0.6)" stroke="oklch(0.42 0.10 275)"/>
+          <rect x="58" y="38" width="40" height="14" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="102" y="38" width="84" height="14" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="14" y="58" width="172" height="22" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+        </svg>
+      </div>
+      <div class="num">03 · admin</div>
+      <div class="title">Rules — list + 4 editor styles</div>
+      <div class="desc">Form-based, sentence-builder, node graph, and DSL. Same data model, four UIs.</div>
+      <div class="row"><span class="tag">4 editor variants</span><span class="tag accent">key screen</span></div>
+    </a>
+
+    <a class="screen-card card" href="screens/05-event-lake.html">
+      <div class="preview">
+        <svg viewBox="0 0 200 92" preserveAspectRatio="none">
+          <rect x="14" y="12" width="172" height="12" rx="2" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <line x1="14" y1="36" x2="186" y2="36" stroke="oklch(0.32 0.018 270)"/>
+          <line x1="14" y1="48" x2="186" y2="48" stroke="oklch(0.27 0.014 270)" stroke-dasharray="2 3"/>
+          <line x1="14" y1="60" x2="186" y2="60" stroke="oklch(0.27 0.014 270)" stroke-dasharray="2 3"/>
+          <line x1="14" y1="72" x2="186" y2="72" stroke="oklch(0.27 0.014 270)" stroke-dasharray="2 3"/>
+          <circle cx="40" cy="48" r="2" fill="oklch(0.74 0.16 145)"/>
+          <circle cx="80" cy="60" r="2" fill="oklch(0.66 0.16 275)"/>
+          <circle cx="124" cy="48" r="2" fill="oklch(0.78 0.13 80)"/>
+          <circle cx="160" cy="72" r="2" fill="oklch(0.74 0.16 145)"/>
+        </svg>
+      </div>
+      <div class="num">04 · admin</div>
+      <div class="title">Event lake browser</div>
+      <div class="desc">Live tail · forensic search · aggregate charts · event-type taxonomy. Tabbed.</div>
+      <div class="row"><span class="tag">4 tabs</span><span class="tag live">tail</span></div>
+    </a>
+
+    <a class="screen-card card" href="screens/06-leaderboard.html">
+      <div class="preview">
+        <svg viewBox="0 0 200 92" preserveAspectRatio="none">
+          <rect x="14" y="14" width="172" height="12" rx="2" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="14" y="32" width="172" height="12" rx="2" fill="oklch(0.30 0.08 275 / 0.6)" stroke="oklch(0.42 0.10 275)"/>
+          <rect x="14" y="50" width="172" height="12" rx="2" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="14" y="68" width="172" height="12" rx="2" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+        </svg>
+      </div>
+      <div class="num">M3 · member</div>
+      <div class="title">Leaderboard + seasons</div>
+      <div class="desc">Current season ranking, all-time, by metric. Public-leaderboard variant included.</div>
+      <div class="row"><span class="tag">4 variants</span><span class="tag warn">public opt-in</span></div>
+    </a>
+
+    <a class="screen-card card" href="screens/07-members-profile.html">
+      <div class="preview">
+        <svg viewBox="0 0 200 92" preserveAspectRatio="none">
+          <rect x="14" y="14" width="172" height="14" rx="2" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <circle cx="24" cy="42" r="5" fill="oklch(0.40 0.10 275)"/>
+          <rect x="34" y="38" width="120" height="4" rx="2" fill="oklch(0.32 0.018 270)"/>
+          <circle cx="24" cy="56" r="5" fill="oklch(0.40 0.10 80)"/>
+          <rect x="34" y="52" width="120" height="4" rx="2" fill="oklch(0.32 0.018 270)"/>
+          <circle cx="24" cy="70" r="5" fill="oklch(0.40 0.10 145)"/>
+          <rect x="34" y="66" width="120" height="4" rx="2" fill="oklch(0.32 0.018 270)"/>
+        </svg>
+      </div>
+      <div class="num">05 · admin</div>
+      <div class="title">Members directory + detail</div>
+      <div class="desc">Filter by role, season activity, currency. Member detail w/ rewards ledger.</div>
+      <div class="row"><span class="tag">4 variants</span></div>
+    </a>
+
+    <a class="screen-card card" href="screens/08-channels-scan.html">
+      <div class="preview">
+        <svg viewBox="0 0 200 92" preserveAspectRatio="none">
+          <rect x="14" y="14" width="76" height="64" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="100" y="14" width="86" height="64" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="22" y="22" width="60" height="6" rx="2" fill="oklch(0.32 0.018 270)"/>
+          <rect x="22" y="34" width="60" height="6" rx="2" fill="oklch(0.32 0.018 270)"/>
+          <rect x="22" y="46" width="60" height="6" rx="2" fill="oklch(0.66 0.16 275)"/>
+          <rect x="22" y="58" width="60" height="6" rx="2" fill="oklch(0.32 0.018 270)"/>
+          <polyline points="106,68 120,60 134,64 148,52 162,58 176,46" stroke="oklch(0.66 0.16 275)" fill="none" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="num">06 · admin</div>
+      <div class="title">Channels &amp; historical scan</div>
+      <div class="desc">Tree of categories/channels w/ scan provenance. Backfill wizard included.</div>
+      <div class="row"><span class="tag">4 variants</span><span class="tag warn">scan flow</span></div>
+    </a>
+
+    <a class="screen-card card" href="screens/09-settings.html">
+      <div class="preview">
+        <svg viewBox="0 0 200 92" preserveAspectRatio="none">
+          <rect x="14" y="18" width="60" height="6" rx="2" fill="oklch(0.32 0.018 270)"/>
+          <rect x="14" y="30" width="172" height="14" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="14" y="50" width="172" height="14" rx="3" fill="oklch(0.225 0.014 270)" stroke="oklch(0.32 0.018 270)"/>
+          <rect x="14" y="70" width="80" height="14" rx="3" fill="oklch(0.66 0.16 275)"/>
+        </svg>
+      </div>
+      <div class="num">07 · admin</div>
+      <div class="title">Settings · seasons · instance</div>
+      <div class="desc">Currency naming, admin roles, season management, instance health.</div>
+      <div class="row"><span class="tag">3 variants</span></div>
+    </a>
+
+  </div>
+
+  <!-- ─────────────── design system ─────────────── -->
+  <h2>System patterns</h2>
+
+  <div class="card">
+    <div class="comp-row">
+      <span class="label">type stack</span>
+      <div style="flex: 1;">
+        <div class="type-row"><span class="role">Display</span><span class="specimen" style="font-size: 32px; font-weight: 500; letter-spacing: -0.02em;">An immutable record of what happened.</span><span class="meta-line">Plex Sans · 32 / 500</span></div>
+        <div class="type-row"><span class="role">Page title</span><span class="specimen" style="font-size: 22px; font-weight: 600;">Rules</span><span class="meta-line">Plex Sans · 22 / 600</span></div>
+        <div class="type-row"><span class="role">Body</span><span class="specimen" style="font-size: 14px;">Rules evaluate events. Predicates filter; outcomes reward.</span><span class="meta-line">Plex Sans · 14 / 400</span></div>
+        <div class="type-row"><span class="role">Data</span><span class="specimen" style="font-family: var(--mono); font-size: 13px;">message_received · 1 248 events · ext_id 12 0938 4192</span><span class="meta-line">Plex Mono · 13 / 400</span></div>
+        <div class="type-row"><span class="role">Caption</span><span class="specimen" style="font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-3);">Last reconciled · 4m ago</span><span class="meta-line">Plex Mono · 10.5 / 0.10em</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 14px;">
+    <div class="comp-row">
+      <span class="label">surface</span>
+      <div class="ds-grid" style="flex: 1;">
+        <div class="swatch"><div class="chip" style="background: var(--bg-0)"></div><div class="name">bg-0</div><div class="val">oklch(0.16 0.012 270)</div></div>
+        <div class="swatch"><div class="chip" style="background: var(--bg-1)"></div><div class="name">bg-1</div><div class="val">oklch(0.195 0.013 270)</div></div>
+        <div class="swatch"><div class="chip" style="background: var(--bg-2)"></div><div class="name">bg-2</div><div class="val">oklch(0.225 0.014 270)</div></div>
+        <div class="swatch"><div class="chip" style="background: var(--bg-3)"></div><div class="name">bg-3</div><div class="val">oklch(0.265 0.015 270)</div></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="comp-row">
+      <span class="label">accent / data</span>
+      <div class="ds-grid" style="flex: 1;">
+        <div class="swatch"><div class="chip" style="background: var(--accent)"></div><div class="name">accent · blurple</div><div class="val">oklch(0.66 0.16 275)</div></div>
+        <div class="swatch"><div class="chip" style="background: var(--coin)"></div><div class="name">coin · primary $</div><div class="val">oklch(0.78 0.13 80)</div></div>
+        <div class="swatch"><div class="chip" style="background: var(--token)"></div><div class="name">token · secondary $</div><div class="val">oklch(0.78 0.13 200)</div></div>
+        <div class="swatch"><div class="chip" style="background: var(--xp)"></div><div class="name">xp · level</div><div class="val">oklch(0.78 0.13 145)</div></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="comp-row">
+      <span class="label">state</span>
+      <div class="ds-grid" style="flex: 1;">
+        <div class="swatch"><div class="chip" style="background: var(--ok)"></div><div class="name">ok</div><div class="val">live · scanning</div></div>
+        <div class="swatch"><div class="chip" style="background: var(--warn)"></div><div class="name">warn</div><div class="val">backfill · paused</div></div>
+        <div class="swatch"><div class="chip" style="background: var(--err)"></div><div class="name">err</div><div class="val">disconnected</div></div>
+        <div class="swatch"><div class="chip" style="background: var(--note); opacity: 0.65;"></div><div class="name">note</div><div class="val">annotation overlay</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 14px;">
+    <div class="comp-row">
+      <span class="label">tags</span>
+      <span class="tag live">live</span>
+      <span class="tag">message_received</span>
+      <span class="tag accent">rule · helpful_reply</span>
+      <span class="tag coin">+25 coins</span>
+      <span class="tag token">+1 token</span>
+      <span class="tag xp">+40 xp</span>
+      <span class="tag warn">cooldown 60s</span>
+    </div>
+    <div class="divider"></div>
+    <div class="comp-row">
+      <span class="label">controls</span>
+      <button class="btn primary">Enable rule</button>
+      <button class="btn">Test against last 24h</button>
+      <button class="btn ghost">Cancel</button>
+      <input class="input mono" placeholder="member: alice · 480391…" style="min-width: 240px;" />
+      <span class="kbd">⌘ K</span>
+    </div>
+    <div class="divider"></div>
+    <div class="comp-row">
+      <span class="label">callouts</span>
+      <div class="note b">trace · transparency-first</div>
+      <div class="note b">future-state UI · stubbed</div>
+      <div class="note b">opt-in · public leaderboard</div>
+    </div>
+  </div>
+
+  <p class="note" style="margin-top: 28px; max-width: 920px;">
+    Variants are explorations, not finalists. Each screen file shows them on a pannable canvas — drag to move,
+    scroll to zoom, click an artboard to focus full-screen. Pick favorites and we'll converge.
+  </p>
+
+</div>
+</body>
+</html>

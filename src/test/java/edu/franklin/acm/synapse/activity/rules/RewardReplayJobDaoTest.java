@@ -1,13 +1,12 @@
 package edu.franklin.acm.synapse.activity.rules;
 
+import java.nio.file.Path;
+
+import org.jdbi.v3.core.Jdbi;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
-import java.nio.file.Path;
-
-import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

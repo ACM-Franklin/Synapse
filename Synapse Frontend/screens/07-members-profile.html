@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" /><title>07 · Members directory + profile</title>
+<link rel="stylesheet" href="screen.css" />
+<style>
+  .variant-row { grid-template-columns: 1fr; }
+  .mini-shell { display: grid; grid-template-columns: 220px 1fr; min-height: 760px; }
+  .mini-shell .sb { border-right: 1px solid var(--line); background: var(--bg-1); padding: 14px 10px; display: flex; flex-direction: column; gap: 14px; font-size: 12.5px; }
+  .mini-shell .main { display: flex; flex-direction: column; }
+  .mini-shell .tb { padding: 10px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .mini-shell .pg { padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+
+  .m-row { display: grid; grid-template-columns: 28px 1fr 140px 100px 100px 100px 80px; gap: 14px; align-items: center; padding: 10px 14px; border-bottom: 1px dashed var(--line-soft); font-size: 13px; }
+  .m-row .num { font-family: var(--mono); font-feature-settings: "tnum"; font-size: 13px; text-align: right; }
+
+  .filt { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* profile shell */
+  .profile {
+    display: grid; grid-template-columns: 320px 1fr; gap: 18px;
+  }
+  .profile-card { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .currency-stack { display: flex; flex-direction: column; gap: 8px; }
+  .currency-row {
+    display: grid; grid-template-columns: 28px 1fr auto;
+    gap: 12px; align-items: center; padding: 8px 10px;
+    background: var(--bg-2); border: 1px solid var(--line-soft); border-radius: var(--r-sm);
+  }
+  .currency-row .ic-cur {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: grid; place-items: center; font-family: var(--mono); font-weight: 600; font-size: 10.5px;
+  }
+  .currency-row .v { font-family: var(--mono); font-feature-settings: "tnum"; font-size: 16px; }
+
+  .recent-row { display: grid; grid-template-columns: 90px 1fr auto; gap: 12px; padding: 9px 14px; border-bottom: 1px dashed var(--line-soft); font-size: 12.5px; align-items: center; }
+  .recent-row .ts { font-family: var(--mono); font-size: 11px; color: var(--text-4); }
+
+  .why-card { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .pred-list { display: flex; flex-direction: column; gap: 4px; }
+  .pred-list .pred {
+    display: grid; grid-template-columns: 22px 1fr 80px;
+    gap: 10px; align-items: center;
+    padding: 6px 10px;
+    border-left: 2px solid var(--ok);
+    background: var(--bg-2);
+    font-family: var(--mono); font-size: 11.5px;
+  }
+  .pred .ck { color: var(--ok); }
+  .pred-list .pred.fail { border-left-color: var(--err); opacity: 0.85; }
+  .pred.fail .ck { color: var(--err); }
+</style>
+</head>
+<body>
+
+<div class="screen-head">
+  <div><div class="num">07 · admin</div><h1>Members &amp; profiles</h1></div>
+  <div class="desc">Directory listing of every guild member, their currencies and rank, plus a deep-dive profile that exposes full reward history and per-rule trace — the "why did this person get this?" view.</div>
+  <div class="right"><a href="../index.html" class="back">← back</a></div>
+</div>
+
+<div class="canvas">
+
+<!-- v1 directory: dense table -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v1</span><span class="v-name">Directory · dense data table</span></div>
+  <p class="variant-desc">Sortable, filterable, exportable. Built for officers triaging activity across thousands of members. Bulk actions stay disabled until selection.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / members</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item">Overview</a><a class="nav-item">Rules</a><a class="nav-item active">Members</a><a class="nav-item">Channels</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / members</span><span style="margin-left: auto;" class="dim mono" style="font-size: 11px;">1 088 members · 942 active 30d</span></div>
+        <div class="pg">
+          <div class="hstack" style="justify-content: space-between;">
+            <div><div class="page-title">Members</div><div class="dim" style="font-size: 12.5px;">Synapse never modifies Discord roles — read-only mirror.</div></div>
+            <div class="hstack"><button class="btn ghost sm">↗ export csv</button><button class="btn sm">+ flag for review</button></div>
+          </div>
+
+          <div class="hstack" style="gap: 10px;">
+            <input class="input mono" placeholder="search by handle, role, currency range…" style="flex: 1;" />
+            <span class="tag">role: any</span><span class="tag">activity: any</span><span class="tag">season: spring '26</span>
+          </div>
+
+          <div class="card" style="padding: 0;">
+            <div class="m-row" style="border-bottom: 1px solid var(--line); color: var(--text-3); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;">
+              <span></span><span>member</span><span>roles</span><span style="text-align: right;">XP</span><span style="text-align: right;">coins</span><span style="text-align: right;">events 30d</span><span style="text-align: right;">last seen</span>
+            </div>
+            <div class="m-row"><span class="avatar h0">M</span><span><b>@maria.cho</b><div class="dim mono" style="font-size: 10.5px;">joined feb 12 · '24</div></span><span class="dim mono" style="font-size: 11px;">@officer @member</span><span class="num" style="color: var(--xp);">21 480</span><span class="num" style="color: var(--coin);">8 412</span><span class="num">2 480</span><span class="num dim">2m ago</span></div>
+            <div class="m-row"><span class="avatar h2">H</span><span><b>@haskell.thebes</b><div class="dim mono" style="font-size: 10.5px;">joined nov 03 · '23</div></span><span class="dim mono" style="font-size: 11px;">@member</span><span class="num" style="color: var(--xp);">19 802</span><span class="num" style="color: var(--coin);">7 188</span><span class="num">2 188</span><span class="num dim">12m ago</span></div>
+            <div class="m-row"><span class="avatar h4">D</span><span><b>@dmitri.v</b><div class="dim mono" style="font-size: 10.5px;">joined jan 22 · '24</div></span><span class="dim mono" style="font-size: 11px;">@officer @member</span><span class="num" style="color: var(--xp);">17 220</span><span class="num" style="color: var(--coin);">6 044</span><span class="num">1 802</span><span class="num dim">22m ago</span></div>
+            <div class="m-row"><span class="avatar h3">P</span><span><b>@priya.k</b><div class="dim mono" style="font-size: 10.5px;">joined jul 02 · '24</div></span><span class="dim mono" style="font-size: 11px;">@member</span><span class="num" style="color: var(--xp);">14 880</span><span class="num" style="color: var(--coin);">5 240</span><span class="num">1 412</span><span class="num dim">2h ago</span></div>
+            <div class="m-row"><span class="avatar h5">R</span><span><b>@ren.lin</b><div class="dim mono" style="font-size: 10.5px;">joined oct 18 · '24</div></span><span class="dim mono" style="font-size: 11px;">@member</span><span class="num" style="color: var(--xp);">12 412</span><span class="num" style="color: var(--coin);">4 088</span><span class="num">962</span><span class="num dim">5h ago</span></div>
+            <div class="m-row"><span class="avatar h1">J</span><span><b>@jules.t</b><div class="dim mono" style="font-size: 10.5px;">joined sep 14 · '24</div></span><span class="dim mono" style="font-size: 11px;">@member</span><span class="num" style="color: var(--xp);">11 044</span><span class="num" style="color: var(--coin);">3 902</span><span class="num">802</span><span class="num dim">14m ago</span></div>
+            <div class="m-row"><span class="avatar h2">K</span><span><b>@kai.h</b><div class="dim mono" style="font-size: 10.5px;">joined feb 28 · '25</div></span><span class="dim mono" style="font-size: 11px;">@member</span><span class="num" style="color: var(--xp);">9 814</span><span class="num" style="color: var(--coin);">3 240</span><span class="num">588</span><span class="num dim">1d ago</span></div>
+            <div class="m-row"><span class="avatar h0">L</span><span><b>@lena.r</b><div class="dim mono" style="font-size: 10.5px;">joined apr 12 · '25</div></span><span class="dim mono" style="font-size: 11px;">@member</span><span class="num" style="color: var(--xp);">9 211</span><span class="num" style="color: var(--coin);">2 988</span><span class="num">488</span><span class="num dim">7h ago</span></div>
+            <div class="m-row"><span class="avatar h4">B</span><span><b>@bo.x</b><div class="dim mono" style="font-size: 10.5px;">joined dec 08 · '24</div></span><span class="dim mono" style="font-size: 11px;">@member</span><span class="num" style="color: var(--xp);">8 088</span><span class="num" style="color: var(--coin);">2 711</span><span class="num">412</span><span class="num dim">3d ago</span></div>
+            <div class="m-row" style="opacity: 0.6;"><span class="avatar h3">G</span><span><b>@ghost.j</b><div class="dim mono" style="font-size: 10.5px;">left mar 14 · '26</div></span><span class="dim mono" style="font-size: 11px;">—</span><span class="num dim">0</span><span class="num dim">0</span><span class="num dim">—</span><span class="num dim">left guild</span></div>
+          </div>
+          <div class="hstack dim mono" style="font-size: 11px; justify-content: space-between;"><span>showing 1–10 of 1 088</span><span class="hstack"><span>← prev</span><span class="kbd">1</span><span>2</span><span>3</span><span>…</span><span>109</span><span>next →</span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v2 directory: visual cards -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v2</span><span class="v-name">Directory · visual card grid</span></div>
+  <p class="variant-desc">Faster scan when you're looking for a person. Trades data density for recognizability — useful for officers who know members visually.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / members</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item active">Members</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / members</span><span style="margin-left: auto;" class="hstack"><span class="tag">grid</span><span class="dim mono" style="font-size: 11px;">|</span><span class="dim mono" style="font-size: 11px;">table</span></span></div>
+        <div class="pg">
+          <div class="hstack" style="gap: 10px;">
+            <input class="input mono" placeholder="search…" style="flex: 1;" />
+            <span class="tag">role · officer</span><span class="tag">activity · top 100</span>
+          </div>
+          <div class="grid" style="grid-template-columns: repeat(4, 1fr); gap: 14px;">
+            <div class="card" style="padding: 16px 14px; display: flex; gap: 12px;"><span class="avatar lg h0">M</span><div><div style="font-weight: 500;">@maria.cho</div><div class="dim mono" style="font-size: 10.5px;">@officer · rank 1</div><div class="hstack" style="margin-top: 6px; gap: 6px;"><span class="tag xp">21 480 XP</span><span class="tag coin">8.4k</span></div></div></div>
+            <div class="card" style="padding: 16px 14px; display: flex; gap: 12px;"><span class="avatar lg h2">H</span><div><div style="font-weight: 500;">@haskell.thebes</div><div class="dim mono" style="font-size: 10.5px;">@member · rank 2</div><div class="hstack" style="margin-top: 6px; gap: 6px;"><span class="tag xp">19 802 XP</span><span class="tag coin">7.2k</span></div></div></div>
+            <div class="card" style="padding: 16px 14px; display: flex; gap: 12px;"><span class="avatar lg h4">D</span><div><div style="font-weight: 500;">@dmitri.v</div><div class="dim mono" style="font-size: 10.5px;">@officer · rank 3</div><div class="hstack" style="margin-top: 6px; gap: 6px;"><span class="tag xp">17 220 XP</span><span class="tag coin">6.0k</span></div></div></div>
+            <div class="card" style="padding: 16px 14px; display: flex; gap: 12px;"><span class="avatar lg h3">P</span><div><div style="font-weight: 500;">@priya.k</div><div class="dim mono" style="font-size: 10.5px;">@member · rank 4</div><div class="hstack" style="margin-top: 6px; gap: 6px;"><span class="tag xp">14 880</span><span class="tag coin">5.2k</span></div></div></div>
+            <div class="card" style="padding: 16px 14px; display: flex; gap: 12px;"><span class="avatar lg h5">R</span><div><div style="font-weight: 500;">@ren.lin</div><div class="dim mono" style="font-size: 10.5px;">@member · rank 5</div><div class="hstack" style="margin-top: 6px; gap: 6px;"><span class="tag xp">12 412</span><span class="tag coin">4.0k</span></div></div></div>
+            <div class="card" style="padding: 16px 14px; display: flex; gap: 12px;"><span class="avatar lg h1">J</span><div><div style="font-weight: 500;">@jules.t</div><div class="dim mono" style="font-size: 10.5px;">@member · rank 6</div><div class="hstack" style="margin-top: 6px; gap: 6px;"><span class="tag xp">11 044</span><span class="tag coin">3.9k</span></div></div></div>
+            <div class="card" style="padding: 16px 14px; display: flex; gap: 12px;"><span class="avatar lg h2">K</span><div><div style="font-weight: 500;">@kai.h</div><div class="dim mono" style="font-size: 10.5px;">@member · rank 7</div><div class="hstack" style="margin-top: 6px; gap: 6px;"><span class="tag xp">9 814</span><span class="tag coin">3.2k</span></div></div></div>
+            <div class="card" style="padding: 16px 14px; display: flex; gap: 12px;"><span class="avatar lg h0">L</span><div><div style="font-weight: 500;">@lena.r</div><div class="dim mono" style="font-size: 10.5px;">@member · rank 8</div><div class="hstack" style="margin-top: 6px; gap: 6px;"><span class="tag xp">9 211</span><span class="tag coin">2.9k</span></div></div></div>
+            <div class="card" style="padding: 16px 14px; display: flex; gap: 12px;"><span class="avatar lg h4">B</span><div><div style="font-weight: 500;">@bo.x</div><div class="dim mono" style="font-size: 10.5px;">@member · rank 9</div><div class="hstack" style="margin-top: 6px; gap: 6px;"><span class="tag xp">8 088</span><span class="tag coin">2.7k</span></div></div></div>
+            <div class="card" style="padding: 16px 14px; display: flex; gap: 12px;"><span class="avatar lg h3">S</span><div><div style="font-weight: 500;">@sasha.b</div><div class="dim mono" style="font-size: 10.5px;">@member · rank 10</div><div class="hstack" style="margin-top: 6px; gap: 6px;"><span class="tag xp">7 412</span><span class="tag coin">2.4k</span></div></div></div>
+            <div class="card" style="padding: 16px 14px; display: flex; gap: 12px;"><span class="avatar lg h5">N</span><div><div style="font-weight: 500;">@nadia.e</div><div class="dim mono" style="font-size: 10.5px;">@member · rank 11</div><div class="hstack" style="margin-top: 6px; gap: 6px;"><span class="tag xp">6 988</span><span class="tag coin">2.2k</span></div></div></div>
+            <div class="card" style="padding: 16px 14px; display: flex; gap: 12px;"><span class="avatar lg h1">Y</span><div><div style="font-weight: 500;">@yoshi.l</div><div class="dim mono" style="font-size: 10.5px;">@member · rank 13</div><div class="hstack" style="margin-top: 6px; gap: 6px;"><span class="tag xp">5 900</span><span class="tag coin">1.7k</span></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v3 — admin profile detail -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v3</span><span class="v-name">Admin · member detail / profile</span></div>
+  <p class="variant-desc">Officer-facing. Per-rule contribution, currency ledger, full reward history, and a "manual adjust" button that's audit-logged. The page that answers complaints and audits.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / members / @maria.cho</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item active">Members</a></div></aside>
+      <div class="main">
+        <div class="tb"><span class="dim">admin / members /</span><span style="color: var(--text);" class="mono">@maria.cho</span></div>
+        <div class="pg">
+          <div class="profile">
+            <div class="card profile-card">
+              <div class="hstack" style="gap: 14px;"><span class="avatar xl h0">M</span><div><div style="font-size: 19px; font-weight: 500;">@maria.cho</div><div class="dim mono" style="font-size: 11px;">discord_id 412 080 ·  joined feb 12 · '24</div><div class="hstack" style="margin-top: 6px; gap: 4px;"><span class="tag accent">@officer</span><span class="tag">@member</span></div></div></div>
+              <div class="divider"></div>
+              <div class="section-title">Currencies · season 4</div>
+              <div class="currency-stack">
+                <div class="currency-row"><span class="ic-cur" style="background: var(--xp-bg); color: var(--xp);">XP</span><span><div style="font-size: 13px; font-weight: 500;">Experience</div><div class="dim mono" style="font-size: 10.5px;">primary metric</div></span><span class="v" style="color: var(--xp);">21 480</span></div>
+                <div class="currency-row"><span class="ic-cur" style="background: var(--coin-bg); color: var(--coin);">¢</span><span><div style="font-size: 13px; font-weight: 500;">Coins</div><div class="dim mono" style="font-size: 10.5px;">spendable</div></span><span class="v" style="color: var(--coin);">8 412</span></div>
+                <div class="currency-row"><span class="ic-cur" style="background: var(--token-bg); color: var(--token);">τ</span><span><div style="font-size: 13px; font-weight: 500;">Mentor tokens</div><div class="dim mono" style="font-size: 10.5px;">earned only</div></span><span class="v" style="color: var(--token);">142</span></div>
+              </div>
+              <div class="divider"></div>
+              <div class="section-title">Officer actions</div>
+              <div class="vstack">
+                <button class="btn sm ghost">view full event lake →</button>
+                <button class="btn sm ghost">re-evaluate retroactively…</button>
+                <button class="btn sm ghost">manual adjustment (audit-logged)</button>
+                <button class="btn sm ghost" style="color: var(--err);">flag for review</button>
+              </div>
+            </div>
+
+            <div class="vstack" style="gap: 18px;">
+              <div class="card" style="padding: 18px 20px;">
+                <div class="section-title">Contribution by rule · season 4</div>
+                <div class="vstack" style="margin-top: 12px;">
+                  <div class="bar-row"><span class="mono" style="width: 200px;">helpful_reply</span><div class="bar"><span style="width: 88%;"></span></div><span class="mono dim">412 · 12 360 XP</span></div>
+                  <div class="bar-row"><span class="mono" style="width: 200px;">forum_post</span><div class="bar"><span style="width: 48%; background: var(--token);"></span></div><span class="mono dim">88 · 4 400 XP</span></div>
+                  <div class="bar-row"><span class="mono" style="width: 200px;">voice_attendance</span><div class="bar"><span style="width: 32%; background: var(--xp);"></span></div><span class="mono dim">22h · 2 200 XP</span></div>
+                  <div class="bar-row"><span class="mono" style="width: 200px;">reaction_thanks</span><div class="bar"><span style="width: 22%; background: var(--coin);"></span></div><span class="mono dim">412 · 1 648 XP</span></div>
+                  <div class="bar-row"><span class="mono" style="width: 200px;">officer_kudos</span><div class="bar"><span style="width: 12%; background: var(--accent);"></span></div><span class="mono dim">8 · 872 XP</span></div>
+                </div>
+              </div>
+
+              <div class="card" style="padding: 0;">
+                <div style="padding: 14px 18px; border-bottom: 1px solid var(--line);" class="hstack"><div class="section-title" style="border: none;">Recent rewards</div><span class="dim mono" style="font-size: 11px; margin-left: auto;">last 24h · 412 events</span></div>
+                <div class="recent-row"><span class="ts">14:08:22</span><span><b class="mono">+30 XP</b> · <b class="mono coin" style="color: var(--coin);">+10 ¢</b> via <span class="tag accent">helpful_reply</span> · in <span class="mono dim">#general</span></span><span class="dim mono" style="font-size: 11px;">trace →</span></div>
+                <div class="recent-row"><span class="ts">12:42:01</span><span><b class="mono">+30 XP</b> · <b class="mono" style="color: var(--coin);">+10 ¢</b> via <span class="tag accent">helpful_reply</span> · in <span class="mono dim">#general</span></span><span class="dim mono" style="font-size: 11px;">trace →</span></div>
+                <div class="recent-row"><span class="ts">10:14:57</span><span class="dim">match suppressed by cooldown · <span class="tag warn">cooldown 38s</span></span><span class="dim mono" style="font-size: 11px;">trace →</span></div>
+                <div class="recent-row"><span class="ts">09:02:18</span><span><b class="mono">+50 XP</b> · <b class="mono" style="color: var(--token);">+1 τ</b> via <span class="tag accent">forum_post</span> · in <span class="mono dim">forum/help</span></span><span class="dim mono" style="font-size: 11px;">trace →</span></div>
+                <div class="recent-row"><span class="ts">y 23:08</span><span><b class="mono">+30 XP</b> via <span class="tag accent">helpful_reply</span></span><span class="dim mono" style="font-size: 11px;">trace →</span></div>
+                <div class="recent-row"><span class="ts">y 19:44</span><span><b class="mono">+30 XP</b> via <span class="tag accent">helpful_reply</span></span><span class="dim mono" style="font-size: 11px;">trace →</span></div>
+                <div class="recent-row"><span class="ts">y 16:02</span><span><b class="mono">+200 XP</b> via <span class="tag accent">officer_kudos</span> awarded by <span class="mono">@dmitri.v</span></span><span class="dim mono" style="font-size: 11px;">trace →</span></div>
+              </div>
+
+              <div class="card why-card">
+                <div class="hstack" style="justify-content: space-between;"><div class="section-title" style="border: none;">Why · evaluation trace</div><span class="dim mono" style="font-size: 11px;">event #84 102 · helpful_reply</span></div>
+                <div class="dim" style="font-size: 12.5px;">Predicate evaluation, in order:</div>
+                <div class="pred-list">
+                  <div class="pred"><span class="ck">✓</span><span>event_type == message_received</span><span class="dim" style="text-align: right;">message</span></div>
+                  <div class="pred"><span class="ck">✓</span><span>channel ∈ [#general, #help, #cs-talk]</span><span class="dim" style="text-align: right;">#general</span></div>
+                  <div class="pred"><span class="ck">✓</span><span>content.length &gt;= 40</span><span class="dim" style="text-align: right;">147</span></div>
+                  <div class="pred"><span class="ck">✓</span><span>is_reply == true</span><span class="dim" style="text-align: right;">replying to #82010</span></div>
+                  <div class="pred"><span class="ck">✓</span><span>cooldown(member, 60s) ok</span><span class="dim" style="text-align: right;">last match 96s</span></div>
+                </div>
+                <div class="dim mono" style="font-size: 11px;">→ outcomes applied: <span style="color: var(--xp);">+30 XP</span> · <span style="color: var(--coin);">+10 coins</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v4 — public member profile -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v4</span><span class="v-name">Member · personal stats page</span></div>
+  <p class="variant-desc">Member-facing version of the same data — owned voice, no audit chrome. Reward trace is still surfaced because transparency is the product.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · m / profile</div></div>
+    <div style="display: flex; flex-direction: column; min-height: 760px;">
+      <div style="padding: 14px 28px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; background: var(--bg-1);">
+        <div class="brand-mark" style="width: 22px; height: 22px;"></div>
+        <div style="font-weight: 600;">Synapse</div>
+        <div class="hstack" style="margin-left: 22px; gap: 4px;"><a class="nav-item" style="padding: 6px 10px;">Dashboard</a><a class="nav-item" style="padding: 6px 10px;">Leaderboard</a><a class="nav-item active" style="padding: 6px 10px;">Profile</a></div>
+        <span class="hstack" style="margin-left: auto; gap: 8px;"><span class="avatar h0">M</span><span style="font-size: 13px;">@maria.cho</span></span>
+      </div>
+      <div style="padding: 32px; display: flex; flex-direction: column; gap: 22px; max-width: 1100px; margin: 0 auto; width: 100%;">
+
+        <div class="hstack" style="gap: 22px; align-items: flex-end;">
+          <span class="avatar xl h0">M</span>
+          <div style="flex: 1;">
+            <div class="dim mono" style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">your profile</div>
+            <h1 style="font-size: 32px; font-weight: 600; letter-spacing: -0.02em; margin: 4px 0 4px;">@maria.cho</h1>
+            <div class="dim" style="font-size: 13px;">joined feb 12 · '24 · @officer · season 4 rank <b style="color: var(--coin);">#1</b> of 1 088</div>
+          </div>
+          <div class="ring" style="--p: 78;"><div class="lvl"><div class="n">L 24</div><div class="l">level</div></div></div>
+        </div>
+
+        <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
+          <div class="card stat" style="border-left: 2px solid var(--xp);"><div class="stat-label">XP · season 4</div><div class="stat-value" style="color: var(--xp);">21 480</div><div class="stat-delta up">+412 this week</div></div>
+          <div class="card stat" style="border-left: 2px solid var(--coin);"><div class="stat-label">Coins</div><div class="stat-value" style="color: var(--coin);">8 412</div><div class="stat-delta">spendable when marketplace ships</div></div>
+          <div class="card stat" style="border-left: 2px solid var(--token);"><div class="stat-label">Mentor tokens</div><div class="stat-value" style="color: var(--token);">142</div><div class="stat-delta">earned via forum_post + officer_kudos</div></div>
+        </div>
+
+        <div class="grid" style="grid-template-columns: 1.4fr 1fr; gap: 18px;">
+          <div class="card" style="padding: 0;">
+            <div style="padding: 14px 18px; border-bottom: 1px solid var(--line);" class="hstack"><div class="section-title" style="border: none;">Recent rewards</div><span class="dim mono" style="font-size: 11px; margin-left: auto;">most recent first</span></div>
+            <div class="recent-row"><span class="ts">14:08</span><span><b class="mono">+30 XP</b> · <b class="mono" style="color: var(--coin);">+10 ¢</b> from <span class="tag accent">helpful_reply</span> in <span class="mono dim">#general</span></span><span class="dim mono" style="font-size: 11px;">why? ↗</span></div>
+            <div class="recent-row"><span class="ts">12:42</span><span><b class="mono">+30 XP</b> · <b class="mono" style="color: var(--coin);">+10 ¢</b> from <span class="tag accent">helpful_reply</span></span><span class="dim mono" style="font-size: 11px;">why? ↗</span></div>
+            <div class="recent-row"><span class="ts">09:02</span><span><b class="mono">+50 XP</b> · <b class="mono" style="color: var(--token);">+1 τ</b> from <span class="tag accent">forum_post</span> in <span class="mono dim">forum/help</span></span><span class="dim mono" style="font-size: 11px;">why? ↗</span></div>
+            <div class="recent-row"><span class="ts">y 16:02</span><span><b class="mono">+200 XP</b> from <span class="tag accent">officer_kudos</span> · awarded by <span class="mono">@dmitri.v</span></span><span class="dim mono" style="font-size: 11px;">why? ↗</span></div>
+            <div class="recent-row"><span class="ts">y 12:08</span><span><b class="mono">+30 XP</b> from <span class="tag accent">helpful_reply</span> in <span class="mono dim">#cs-talk</span></span><span class="dim mono" style="font-size: 11px;">why? ↗</span></div>
+            <div class="recent-row"><span class="ts">2d</span><span><b class="mono">+15 XP</b> from <span class="tag accent">voice_attendance</span> · 30 min in <span class="mono dim">voice/study-room</span></span><span class="dim mono" style="font-size: 11px;">why? ↗</span></div>
+          </div>
+
+          <div class="card" style="padding: 18px 20px;">
+            <div class="section-title">By rule · season 4</div>
+            <div class="vstack" style="margin-top: 12px;">
+              <div class="bar-row"><span class="mono" style="width: 130px;">helpful_reply</span><div class="bar"><span style="width: 88%;"></span></div><span class="mono dim">412×</span></div>
+              <div class="bar-row"><span class="mono" style="width: 130px;">forum_post</span><div class="bar"><span style="width: 48%; background: var(--token);"></span></div><span class="mono dim">88×</span></div>
+              <div class="bar-row"><span class="mono" style="width: 130px;">voice_attendance</span><div class="bar"><span style="width: 32%; background: var(--xp);"></span></div><span class="mono dim">22h</span></div>
+              <div class="bar-row"><span class="mono" style="width: 130px;">reaction_thanks</span><div class="bar"><span style="width: 22%; background: var(--coin);"></span></div><span class="mono dim">412×</span></div>
+              <div class="bar-row"><span class="mono" style="width: 130px;">officer_kudos</span><div class="bar"><span style="width: 12%; background: var(--accent);"></span></div><span class="mono dim">8×</span></div>
+            </div>
+            <div class="divider" style="margin: 16px 0 12px;"></div>
+            <div class="section-title">Future</div>
+            <div class="dim" style="font-size: 12px; margin-top: 8px;">Achievements, marketplace, and inventory will appear here when enabled by your guild's admins.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body></html>

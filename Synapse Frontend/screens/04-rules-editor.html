@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" /><title>03 · Rules — list &amp; editor</title>
+<link rel="stylesheet" href="screen.css" />
+<style>
+  .variant-row { grid-template-columns: 1fr; }
+  .mini-shell { display: grid; grid-template-columns: 220px 1fr; min-height: 760px; }
+  .mini-shell .sb { border-right: 1px solid var(--line); background: var(--bg-1); padding: 14px 10px; display: flex; flex-direction: column; gap: 14px; font-size: 12.5px; }
+  .mini-shell .main { display: flex; flex-direction: column; }
+  .mini-shell .tb { padding: 10px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .mini-shell .pg { padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; }
+
+  .rules-grid {
+    display: grid; grid-template-columns: 360px 1fr; gap: 14px; height: 720px;
+  }
+  .rules-list { display: flex; flex-direction: column; }
+  .rl-search { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .rl-search input { width: 100%; }
+  .rl-row {
+    display: grid; grid-template-columns: 8px 1fr auto;
+    gap: 10px; padding: 12px; border-bottom: 1px solid var(--line-soft);
+    cursor: pointer;
+  }
+  .rl-row:hover { background: var(--bg-2); }
+  .rl-row.active { background: var(--accent-bg); }
+  .rl-row .led { width: 8px; height: 8px; border-radius: 50%; background: var(--text-4); margin-top: 5px; }
+  .rl-row .led.on { background: var(--live); }
+  .rl-row .led.off { background: var(--text-4); }
+  .rl-row .nm { font-weight: 500; font-size: 13px; }
+  .rl-row .meta { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); margin-top: 3px; }
+  .rl-row .right { font-family: var(--mono); font-size: 11px; color: var(--text-3); align-self: center; }
+
+  .editor { padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+  .editor h2 { margin: 0; font-size: 18px; font-weight: 500; }
+  .editor .field { display: flex; flex-direction: column; gap: 6px; }
+  .editor .field .label { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* v1 form predicates */
+  .pred-list { display: flex; flex-direction: column; gap: 8px; }
+  .pred-row {
+    display: grid; grid-template-columns: 16px 200px 1fr auto;
+    gap: 10px; align-items: center;
+    padding: 10px 12px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-sm);
+  }
+  .pred-row .grip { color: var(--text-4); cursor: grab; font-family: var(--mono); }
+  .pred-row .type {
+    font-family: var(--mono); font-size: 12px; padding: 4px 8px;
+    background: var(--bg-3); border-radius: 3px; color: var(--text);
+  }
+  .pred-row .params { font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+  .pred-row .x { color: var(--text-4); font-family: var(--mono); cursor: pointer; }
+
+  .out-list .pred-row .type { color: var(--coin); background: var(--coin-bg); }
+  .out-list .pred-row .params { color: var(--text); }
+
+  /* v2 sentence builder */
+  .sentence {
+    padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--r);
+    background: var(--bg-1);
+    font-size: 18px; line-height: 1.9; letter-spacing: -0.005em;
+    color: var(--text-2);
+  }
+  .sentence .blank {
+    display: inline-block; padding: 4px 10px; border-radius: 4px;
+    background: oklch(0.30 0.08 275 / 0.30); color: var(--accent);
+    font-family: var(--mono); font-size: 14px;
+    border-bottom: 1.5px dashed var(--accent-dim);
+    margin: 0 2px;
+  }
+  .sentence .blank.coin { background: var(--coin-bg); color: var(--coin); border-bottom-color: oklch(0.50 0.09 80); }
+  .sentence .blank.token { background: var(--token-bg); color: var(--token); border-bottom-color: oklch(0.50 0.09 200); }
+  .sentence .add {
+    display: inline-block; padding: 2px 10px; border-radius: 4px;
+    border: 1px dashed var(--text-4); color: var(--text-3);
+    font-family: var(--mono); font-size: 13px; cursor: pointer;
+    margin: 0 2px;
+  }
+
+  /* v3 graph */
+  .graph {
+    position: relative; height: 480px;
+    background:
+      radial-gradient(circle at 1px 1px, oklch(0.24 0.012 270) 1px, transparent 0) 0 0 / 18px 18px,
+      var(--bg-0);
+    border: 1px solid var(--line); border-radius: var(--r);
+    overflow: hidden;
+  }
+  .node {
+    position: absolute; padding: 10px 14px;
+    background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--r-sm);
+    min-width: 180px;
+  }
+  .node .nh { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; color: var(--text-3); text-transform: uppercase; }
+  .node .nb { font-size: 13px; margin-top: 4px; }
+  .node.event { border-color: var(--accent-dim); }
+  .node.event .nh { color: var(--accent); }
+  .node.pred { border-style: dashed; }
+  .node.out { border-color: oklch(0.50 0.09 80); }
+  .node.out .nh { color: var(--coin); }
+  .edge {
+    position: absolute; height: 1.4px;
+    background: linear-gradient(90deg, var(--text-4), var(--accent));
+    transform-origin: 0 50%;
+  }
+  .edge::after {
+    content: ""; position: absolute; right: -4px; top: -3px;
+    border-left: 6px solid var(--accent); border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+  }
+
+  /* v4 dsl */
+  .dsl {
+    background: oklch(0.13 0.01 270);
+    border: 1px solid var(--line); border-radius: var(--r);
+    padding: 18px 20px;
+    font-family: var(--mono); font-size: 13px; line-height: 1.7;
+    color: var(--text-2);
+    overflow: auto;
+  }
+  .dsl .k { color: var(--accent); }
+  .dsl .s { color: var(--coin); }
+  .dsl .n { color: var(--token); }
+  .dsl .c { color: var(--text-4); font-style: italic; }
+  .dsl .ln {
+    display: grid; grid-template-columns: 28px 1fr; gap: 14px;
+  }
+  .dsl .ln .nu { color: var(--text-4); text-align: right; user-select: none; }
+  .dsl-rail { display: grid; grid-template-columns: 1fr 280px; gap: 14px; }
+  .helper { padding: 14px; }
+  .helper h4 { margin: 0 0 8px; font-size: 11px; font-family: var(--mono); letter-spacing: 0.08em; color: var(--text-3); text-transform: uppercase; }
+  .helper .h-row { display: flex; flex-direction: column; gap: 2px; padding: 7px 0; border-bottom: 1px dashed var(--line-soft); }
+  .helper .h-row:last-child { border-bottom: none; }
+  .helper .h-row .nm { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  .helper .h-row .ds { font-size: 11px; color: var(--text-3); }
+</style>
+</head>
+<body>
+
+<div class="screen-head">
+  <div><div class="num">03 · admin</div><h1>Rules — list &amp; editor</h1></div>
+  <div class="desc">Same data model: event_type target, ordered AND predicates, one or more outcomes, enabled / live / historic / cooldown. Four UIs for the same shape — pick the one that fits how Synapse admins think.</div>
+  <div class="right"><a href="../index.html" class="back">← back</a></div>
+</div>
+
+<div class="canvas">
+
+<!-- v1 form -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">e1</span><span class="v-name">Form-based · master/detail</span><span class="v-tag">classic admin</span></div>
+  <p class="variant-desc">List on the left, editor on the right. Predicates are draggable rows; outcomes are a separate stack. Lowest-risk to implement; familiar to anyone who's used a forum admin panel.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / rules / helpful_reply</div></div>
+    <div class="mini-shell">
+      <aside class="sb">
+        <div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div>
+          <a class="nav-item">Overview</a><a class="nav-item">Event lake</a>
+          <a class="nav-item active"><span class="ic di"></span> Rules <span class="count">38</span></a>
+          <a class="nav-item">Members</a><a class="nav-item">Channels</a><a class="nav-item">Seasons</a><a class="nav-item">Historical scan</a>
+        </div>
+      </aside>
+      <div class="main">
+        <div class="tb"><span>admin / rules / <span style="color: var(--text);">helpful_reply</span></span><span style="margin-left: auto;" class="hstack"><span class="tag live">enabled</span><span class="tag">live</span><span class="tag warn">cooldown 60s</span></span></div>
+        <div class="rules-grid">
+          <div class="card rules-list">
+            <div class="rl-search"><input class="input mono" placeholder="filter by name, event_type…" /></div>
+            <div style="overflow: auto;">
+              <div class="rl-row active"><div class="led on"></div><div><div class="nm">helpful_reply</div><div class="meta">message_received · 4 preds · 2 outcomes</div></div><div class="right">982 ×</div></div>
+              <div class="rl-row"><div class="led on"></div><div><div class="nm">voice_attendance</div><div class="meta">voice_session · 2 preds · 1 outcome</div></div><div class="right">410 ×</div></div>
+              <div class="rl-row"><div class="led on"></div><div><div class="nm">reaction_thanks</div><div class="meta">reaction_added · 3 preds · 1 outcome</div></div><div class="right">388 ×</div></div>
+              <div class="rl-row"><div class="led on"></div><div><div class="nm">forum_post</div><div class="meta">thread_created · 2 preds · 2 outcomes</div></div><div class="right">62 ×</div></div>
+              <div class="rl-row"><div class="led on"></div><div><div class="nm">weekly_streak</div><div class="meta">aggregate · 1 pred · 2 outcomes</div></div><div class="right">42 ×</div></div>
+              <div class="rl-row"><div class="led off"></div><div><div class="nm">first_message</div><div class="meta">message_received · disabled</div></div><div class="right">0 ×</div></div>
+              <div class="rl-row"><div class="led off"></div><div><div class="nm">officer_kudos</div><div class="meta">reaction_added · paused · debug</div></div><div class="right">—</div></div>
+            </div>
+          </div>
+          <div class="card editor">
+            <div class="hstack" style="justify-content: space-between;">
+              <h2>helpful_reply</h2>
+              <div class="hstack"><button class="btn ghost sm">Test against last 24h</button><button class="btn primary sm">Save</button></div>
+            </div>
+            <div class="row-2">
+              <div class="field"><span class="label">name</span><input class="input mono" value="helpful_reply" /></div>
+              <div class="field"><span class="label">event_type</span><input class="input mono" value="message_received" /></div>
+            </div>
+            <div class="field"><span class="label">description</span><input class="input" value="Reward substantive replies in support channels. Cooldown prevents spam." /></div>
+            <div class="row-2">
+              <div class="hstack"><span class="label">enabled</span><span class="tag live">on</span></div>
+              <div class="hstack"><span class="label">applies live</span><span class="tag accent">yes</span><span class="label" style="margin-left: 14px;">applies historic</span><span class="tag">no</span></div>
+            </div>
+            <div class="row-2">
+              <div class="field"><span class="label">cooldown</span><input class="input mono" value="60s" /></div>
+              <div class="field"><span class="label">last fired</span><input class="input mono" value="14:08:22 — 4s ago" disabled /></div>
+            </div>
+
+            <div class="section-title">Predicates · all must pass</div>
+            <div class="pred-list">
+              <div class="pred-row"><span class="grip">⋮⋮</span><span class="type">channel_in</span><span class="params">[ #general · #help · #cs-talk ]</span><span class="x">✕</span></div>
+              <div class="pred-row"><span class="grip">⋮⋮</span><span class="type">message_length</span><span class="params">≥ 40 characters</span><span class="x">✕</span></div>
+              <div class="pred-row"><span class="grip">⋮⋮</span><span class="type">not_own_thread</span><span class="params">message not in a thread you opened</span><span class="x">✕</span></div>
+              <div class="pred-row"><span class="grip">⋮⋮</span><span class="type">cooldown</span><span class="params">60s per member</span><span class="x">✕</span></div>
+            </div>
+            <button class="btn ghost sm" style="align-self: start;">+ add predicate</button>
+
+            <div class="section-title">Outcomes</div>
+            <div class="pred-list out-list">
+              <div class="pred-row"><span class="grip">⋮⋮</span><span class="type">grant_currency</span><span class="params">+25 primary (coins)</span><span class="x">✕</span></div>
+              <div class="pred-row"><span class="grip">⋮⋮</span><span class="type">grant_xp</span><span class="params">+40 xp · season-bound</span><span class="x">✕</span></div>
+            </div>
+            <button class="btn ghost sm" style="align-self: start;">+ add outcome</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v2 sentence builder -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">e2</span><span class="v-name">Sentence builder · "When X, give Y"</span><span class="v-tag">novice friendly</span></div>
+  <p class="variant-desc">Same data model rendered as one editable English sentence. Each <span class="mono dim">[blank]</span> opens a typed picker. Best for first-time admins; collapses to the form view when complexity grows.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / rules / new</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item active">Rules</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / rules / <span style="color: var(--text);">new — sentence mode</span></span><span style="margin-left: auto;" class="hstack"><span class="kbd">⇄ form</span><span class="kbd">⇄ DSL</span></span></div>
+        <div class="pg" style="padding: 26px 32px;">
+          <div class="hstack" style="justify-content: space-between;">
+            <h2 style="margin: 0; font-size: 22px; font-weight: 500;">New rule</h2>
+            <div class="hstack"><button class="btn ghost sm">Test against last 24h</button><button class="btn primary sm">Save &amp; enable</button></div>
+          </div>
+          <div class="dim" style="font-size: 13px; max-width: 680px;">Build the rule by filling the blanks. The sentence below is real — what you compose is exactly what the rule engine evaluates.</div>
+
+          <div class="sentence">
+            <b>When</b> a member <span class="blank">sends a message</span> <b>and</b>
+            it is in <span class="blank">#general · #help · #cs-talk</span> <b>and</b>
+            its length is <span class="blank">≥ 40 characters</span> <b>and</b>
+            it is <span class="blank">not in a thread the member opened</span>,
+            <span class="add">+ add condition</span>
+            <br/>
+            <b>then</b> grant them <span class="blank coin">+25 coins</span> <b>and</b>
+            <span class="blank coin">+40 xp</span>,
+            <span class="add">+ add outcome</span>
+            <br/>
+            <b>but no more often than</b> <span class="blank">once every 60 seconds</span>.
+            <br/>
+            <b>This rule applies</b> <span class="blank">to live events only</span>
+            <b>and is</b> <span class="blank">enabled</span>.
+          </div>
+
+          <div class="row-2" style="margin-top: 18px;">
+            <div class="field"><span class="label">rule name</span><input class="input mono" value="helpful_reply" /></div>
+            <div class="field"><span class="label">description</span><input class="input" value="Reward substantive replies in support channels." /></div>
+          </div>
+
+          <div class="card" style="padding: 14px 18px;">
+            <div class="section-title">Test against last 24 hours · dry run</div>
+            <div class="hstack" style="margin-top: 10px; gap: 22px;">
+              <div class="vstack" style="gap: 2px;"><span class="dim mono" style="font-size: 11px;">events scanned</span><span style="font-size: 22px;">48 102</span></div>
+              <div class="vstack" style="gap: 2px;"><span class="dim mono" style="font-size: 11px;">would match</span><span style="font-size: 22px; color: var(--accent);">982</span></div>
+              <div class="vstack" style="gap: 2px;"><span class="dim mono" style="font-size: 11px;">unique members</span><span style="font-size: 22px;">214</span></div>
+              <div class="vstack" style="gap: 2px;"><span class="dim mono" style="font-size: 11px;">total coins granted</span><span style="font-size: 22px; color: var(--coin);">24 550</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v3 graph -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">e3</span><span class="v-name">Node graph · drag predicates onto a canvas</span><span class="v-tag">visual / power user</span></div>
+  <p class="variant-desc">For admins building complex rules. Event source on the left, predicates as gates, outcomes on the right. AND-logic is implicit in the chain. Strongest at debugging — hovering a node shows its last 10 evaluations.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / rules / helpful_reply · graph</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item active">Rules</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / rules / <span style="color: var(--text);">helpful_reply</span> · graph mode</span><span style="margin-left: auto;" class="hstack"><span class="kbd">⇄ form</span><span class="kbd">⇄ sentence</span><span class="kbd">⇄ DSL</span></span></div>
+        <div class="pg">
+          <div class="graph">
+            <!-- event source -->
+            <div class="node event" style="left: 30px; top: 200px;"><div class="nh">event source</div><div class="nb">message_received</div></div>
+            <!-- predicates -->
+            <div class="node pred" style="left: 270px; top: 60px;"><div class="nh">predicate · 1</div><div class="nb">channel_in [#general, #help, #cs-talk]</div></div>
+            <div class="node pred" style="left: 270px; top: 160px;"><div class="nh">predicate · 2</div><div class="nb">message_length ≥ 40</div></div>
+            <div class="node pred" style="left: 270px; top: 260px;"><div class="nh">predicate · 3</div><div class="nb">not_own_thread</div></div>
+            <div class="node pred" style="left: 270px; top: 360px;"><div class="nh">predicate · 4</div><div class="nb">cooldown 60s · per member</div></div>
+            <!-- AND merge -->
+            <div class="node" style="left: 560px; top: 210px; background: var(--bg-2); min-width: 90px; text-align: center;"><div class="nh" style="color: var(--accent);">all pass · AND</div><div class="nb mono" style="font-size: 18px;">∧</div></div>
+            <!-- outcomes -->
+            <div class="node out" style="left: 740px; top: 160px;"><div class="nh">outcome · grant currency</div><div class="nb">+25 <span class="dim">coins</span></div></div>
+            <div class="node out" style="left: 740px; top: 260px;"><div class="nh">outcome · grant xp</div><div class="nb">+40 <span class="dim">xp · season</span></div></div>
+
+            <!-- edges (approximated) -->
+            <div class="edge" style="left: 192px; top: 220px; width: 78px;"></div>
+            <div class="edge" style="left: 192px; top: 220px; width: 80px; transform: rotate(-22deg);"></div>
+            <div class="edge" style="left: 192px; top: 220px; width: 80px; transform: rotate(22deg);"></div>
+            <div class="edge" style="left: 192px; top: 220px; width: 90px; transform: rotate(45deg);"></div>
+            <div class="edge" style="left: 460px; top: 90px; width: 100px; transform: rotate(38deg);"></div>
+            <div class="edge" style="left: 460px; top: 190px; width: 100px;"></div>
+            <div class="edge" style="left: 460px; top: 290px; width: 100px; transform: rotate(-22deg);"></div>
+            <div class="edge" style="left: 460px; top: 390px; width: 100px; transform: rotate(-45deg);"></div>
+            <div class="edge" style="left: 660px; top: 220px; width: 80px; transform: rotate(-22deg);"></div>
+            <div class="edge" style="left: 660px; top: 220px; width: 80px; transform: rotate(22deg);"></div>
+
+            <!-- toolbar -->
+            <div style="position: absolute; left: 14px; top: 14px; padding: 6px 10px; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--r-sm); display: flex; gap: 8px; font-family: var(--mono); font-size: 11px;">
+              <span class="kbd">+ predicate</span><span class="kbd">+ outcome</span><span class="dim">·</span><span class="kbd">test 24h</span>
+            </div>
+            <div style="position: absolute; right: 14px; bottom: 14px; padding: 8px 12px; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--r-sm); font-family: var(--mono); font-size: 11px; color: var(--text-3);">
+              <span style="color: var(--accent);">●</span> 982 fires · 24h · 214 unique members
+            </div>
+          </div>
+
+          <div class="row-2">
+            <div class="field"><span class="label">name</span><input class="input mono" value="helpful_reply" /></div>
+            <div class="row-2"><div class="field"><span class="label">cooldown</span><input class="input mono" value="60s" /></div><div class="field"><span class="label">enabled</span><input class="input mono" value="yes · live" /></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v4 DSL / code -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">e4</span><span class="v-name">DSL · code with helper rail</span><span class="v-tag">power user · auditable</span></div>
+  <p class="variant-desc">Rules as text. Same data, written declaratively, diff-friendly. Helper rail surfaces predicate &amp; outcome catalogs and inline event_type docs. The sentence and form views compile to this.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / rules / helpful_reply.synapse</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item active">Rules</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / rules / <span style="color: var(--text);">helpful_reply.synapse</span></span><span style="margin-left: auto;" class="hstack"><span class="kbd">⇄ sentence</span><span class="kbd">⇄ form</span><span class="kbd">⇄ graph</span></span></div>
+        <div class="pg">
+          <div class="dsl-rail">
+            <div class="dsl">
+<div class="ln"><span class="nu">1</span><span><span class="c"># Reward substantive replies in support channels.</span></span></div>
+<div class="ln"><span class="nu">2</span><span><span class="k">rule</span> <span class="s">"helpful_reply"</span> <span class="k">on</span> <span class="s">message_received</span> {</span></div>
+<div class="ln"><span class="nu">3</span><span>  <span class="k">enabled</span> = <span class="n">true</span></span></div>
+<div class="ln"><span class="nu">4</span><span>  <span class="k">applies</span> = [<span class="s">live</span>]                <span class="c"># or [live, historic]</span></span></div>
+<div class="ln"><span class="nu">5</span><span>  <span class="k">cooldown</span> = <span class="n">60s</span> <span class="k">per</span> member</span></div>
+<div class="ln"><span class="nu">6</span><span></span></div>
+<div class="ln"><span class="nu">7</span><span>  <span class="k">predicates</span> {</span></div>
+<div class="ln"><span class="nu">8</span><span>    channel_in     [<span class="s">"#general"</span>, <span class="s">"#help"</span>, <span class="s">"#cs-talk"</span>]</span></div>
+<div class="ln"><span class="nu">9</span><span>    message_length <span class="k">&gt;=</span> <span class="n">40</span></span></div>
+<div class="ln"><span class="nu">10</span><span>    not_own_thread</span></div>
+<div class="ln"><span class="nu">11</span><span>  }</span></div>
+<div class="ln"><span class="nu">12</span><span></span></div>
+<div class="ln"><span class="nu">13</span><span>  <span class="k">outcomes</span> {</span></div>
+<div class="ln"><span class="nu">14</span><span>    grant_currency <span class="k">primary</span> = <span class="n">+25</span></span></div>
+<div class="ln"><span class="nu">15</span><span>    grant_xp                = <span class="n">+40</span></span></div>
+<div class="ln"><span class="nu">16</span><span>  }</span></div>
+<div class="ln"><span class="nu">17</span><span>}</span></div>
+<div class="ln"><span class="nu">18</span><span></span></div>
+<div class="ln"><span class="nu">19</span><span><span class="c"># test · last 24h:  982 matches across 214 members → +24 550 coins</span></span></div>
+            </div>
+            <div class="vstack">
+              <div class="card helper">
+                <h4>predicates · catalog</h4>
+                <div class="h-row"><span class="nm">channel_in [..]</span><span class="ds">restrict to specific channels</span></div>
+                <div class="h-row"><span class="nm">message_length &gt;= n</span><span class="ds">min character count</span></div>
+                <div class="h-row"><span class="nm">not_own_thread</span><span class="ds">not a thread the member opened</span></div>
+                <div class="h-row"><span class="nm">role_has [..]</span><span class="ds">member has any of these roles</span></div>
+                <div class="h-row"><span class="nm">reaction_emoji_in</span><span class="ds">reaction is one of these emojis</span></div>
+                <div class="h-row"><span class="nm">voice_duration &gt;=</span><span class="ds">session length floor</span></div>
+              </div>
+              <div class="card helper">
+                <h4>outcomes</h4>
+                <div class="h-row"><span class="nm">grant_currency primary|secondary</span><span class="ds">add to wallet</span></div>
+                <div class="h-row"><span class="nm">grant_xp</span><span class="ds">add season-bound xp</span></div>
+                <div class="h-row"><span class="nm">grant_role</span><span class="ds">future · stubbed</span></div>
+                <div class="h-row"><span class="nm">announce</span><span class="ds">future · stubbed</span></div>
+              </div>
+              <button class="btn primary">Save &amp; enable</button>
+              <button class="btn ghost">Test against last 24h</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body></html>

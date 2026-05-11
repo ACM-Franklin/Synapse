@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" /><title>04 · Event lake browser</title>
+<link rel="stylesheet" href="screen.css" />
+<style>
+  .variant-row { grid-template-columns: 1fr; }
+  .mini-shell { display: grid; grid-template-columns: 220px 1fr; min-height: 760px; }
+  .mini-shell .sb { border-right: 1px solid var(--line); background: var(--bg-1); padding: 14px 10px; display: flex; flex-direction: column; gap: 14px; font-size: 12.5px; }
+  .mini-shell .main { display: flex; flex-direction: column; }
+  .mini-shell .tb { padding: 10px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .mini-shell .pg { padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; }
+  .lake-tabs { padding: 0 18px; display: flex; gap: 0; border-bottom: 1px solid var(--line); }
+  .lake-tabs .tab { padding: 10px 14px; font-size: 13px; color: var(--text-3); border-bottom: 2px solid transparent; }
+  .lake-tabs .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .lake-tabs .tab .count { margin-left: 6px; font-family: var(--mono); font-size: 10.5px; color: var(--text-4); }
+  .feed { display: flex; flex-direction: column; }
+  .feed .row {
+    display: grid; grid-template-columns: 80px 130px 24px 1fr auto; gap: 12px;
+    padding: 8px 14px; border-bottom: 1px dashed var(--line-soft);
+    font-size: 12.5px; align-items: center;
+  }
+  .feed .ts { font-family: var(--mono); font-size: 11px; color: var(--text-4); }
+  .feed .et { font-family: var(--mono); font-size: 11.5px; }
+
+  .search-bar { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; font-family: var(--mono); font-size: 11.5px;
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 999px;
+    color: var(--text-2);
+  }
+  .chip .x { color: var(--text-4); cursor: pointer; }
+
+  .ts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .chart {
+    aspect-ratio: 16/7; width: 100%;
+    background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    border-radius: var(--r-sm);
+    position: relative; overflow: hidden;
+    border: 1px solid var(--line-soft);
+  }
+
+  /* taxonomy */
+  .tax-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .tax-card {
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .tax-card .name { font-family: var(--mono); font-size: 13px; color: var(--text); }
+  .tax-card .count { font-family: var(--mono); font-size: 22px; font-weight: 500; color: var(--accent); font-feature-settings: "tnum"; }
+  .tax-card .desc { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+  .tax-card .actions { display: flex; gap: 6px; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="screen-head">
+  <div><div class="num">04 · admin</div><h1>Event lake browser</h1></div>
+  <div class="desc">The immutable record. Four tabs serve four jobs: watch the live tail, search forensically, see aggregates, and explore the event taxonomy when authoring rules.</div>
+  <div class="right"><a href="../index.html" class="back">← back</a></div>
+</div>
+
+<div class="canvas">
+
+<!-- t1 live tail -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">t1</span><span class="v-name">Tab · Live tail</span></div>
+  <p class="variant-desc">Streaming view, pausable. Rule matches are inline-tagged on the right of each row so the admin can sanity-check the rule engine while traffic flows through.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / event-lake / live</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div>
+          <a class="nav-item">Overview</a>
+          <a class="nav-item active"><span class="ic sq"></span> Event lake <span class="count">2.4M</span></a>
+          <a class="nav-item">Rules</a><a class="nav-item">Members</a><a class="nav-item">Channels</a>
+        </div>
+      </aside>
+      <div class="main">
+        <div class="tb"><span>admin / event lake</span><span style="margin-left: auto;" class="hstack"><span class="dim">total</span><span class="mono" style="color: var(--text);">2 412 088</span></span></div>
+        <div class="lake-tabs"><span class="tab active">Live tail<span class="count">streaming</span></span><span class="tab">Search<span class="count">2.4M</span></span><span class="tab">Aggregates<span class="count">14d</span></span><span class="tab">Taxonomy<span class="count">11 types</span></span></div>
+        <div class="pg">
+          <div class="card" style="padding: 0;">
+            <div class="search-bar" style="border-bottom: 1px solid var(--line); padding: 12px 14px;">
+              <div class="hstack"><input class="input mono" placeholder="filter by member, channel, event_type, contains…" style="flex: 1;" /><span class="tag live">streaming</span><button class="btn sm ghost">⏸ pause</button></div>
+              <div class="filter-row">
+                <span class="chip">event_type ∈ message_received, reaction_added, voice_join <span class="x">✕</span></span>
+                <span class="chip">channel ≠ #bot-spam <span class="x">✕</span></span>
+                <span class="chip">+ add filter</span>
+              </div>
+            </div>
+            <div class="feed">
+              <div class="row"><span class="ts">14:08:22</span><span class="et" style="color: var(--accent);">message_received</span><span class="avatar h0">M</span><span><span class="mono">@maria.cho</span> in <span class="mono dim">#general</span> · 147 chars · not reply</span><span><span class="tag accent">helpful_reply</span></span></div>
+              <div class="row"><span class="ts">14:08:19</span><span class="et" style="color: var(--xp);">voice_join</span><span class="avatar h2">J</span><span><span class="mono">@jules.t</span> joined <span class="mono dim">voice/study-room</span></span><span><span class="tag accent">voice_attendance</span></span></div>
+              <div class="row"><span class="ts">14:08:14</span><span class="et" style="color: var(--token);">thread_created</span><span class="avatar h4">P</span><span><span class="mono">@priya.k</span> opened <span class="mono dim">"Fast hash collisions"</span> in forum/help</span><span><span class="tag accent">forum_post</span></span></div>
+              <div class="row"><span class="ts">14:08:09</span><span class="et" style="color: var(--accent);">message_received</span><span class="avatar h1">D</span><span><span class="mono">@dmitri.v</span> in <span class="mono dim">#help</span> · 88 chars</span><span><span class="tag warn">cooldown 38s</span></span></div>
+              <div class="row"><span class="ts">14:08:02</span><span class="et" style="color: var(--coin);">reaction_added</span><span class="avatar h3">R</span><span><span class="mono">@ren.lin</span> reacted <span class="mono">✨</span> on <span class="mono dim">msg #82010</span></span><span><span class="tag accent">reaction_thanks</span></span></div>
+              <div class="row"><span class="ts">14:07:58</span><span class="et" style="color: var(--coin);">reaction_added</span><span class="avatar h5">S</span><span><span class="mono">@sasha.b</span> reacted <span class="mono">👍</span> in <span class="mono dim">#announcements</span></span><span class="dim">no rule</span></div>
+              <div class="row"><span class="ts">14:07:51</span><span class="et" style="color: var(--xp);">voice_leave</span><span class="avatar h0">M</span><span><span class="mono">@mira.q</span> left voice/study-room · 47 m</span><span><span class="tag accent">voice_attendance</span></span></div>
+              <div class="row"><span class="ts">14:07:44</span><span class="et" style="color: var(--accent);">message_edited</span><span class="avatar h2">B</span><span><span class="mono">@bo.x</span> edited msg in <span class="mono dim">#general</span> · UPSERT</span><span class="dim">no rule</span></div>
+              <div class="row"><span class="ts">14:07:38</span><span class="et" style="color: var(--text-2);">member_role_change</span><span class="avatar h4">P</span><span><span class="mono">@priya.k</span> · added @officer · removed @member</span><span class="dim">no rule</span></div>
+              <div class="row"><span class="ts">14:07:31</span><span class="et" style="color: var(--accent);">message_received</span><span class="avatar h1">L</span><span><span class="mono">@lena.r</span> in <span class="mono dim">#cs-talk</span> · 212 chars</span><span><span class="tag accent">helpful_reply</span></span></div>
+              <div class="row"><span class="ts">14:07:25</span><span class="et" style="color: var(--token);">message_attachment</span><span class="avatar h3">K</span><span><span class="mono">@kai.h</span> uploaded <span class="mono dim">graph.png</span> · 412 KB</span><span class="dim">no rule</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- t2 search -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">t2</span><span class="v-name">Tab · Forensic search</span></div>
+  <p class="variant-desc">Filter by member, channel, type, time range. Result rows expand into the row's child-table detail (message, reaction, voice session, role change). Saved searches power rule authoring.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / event-lake / search</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item active">Event lake</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / event lake / search</span></div>
+        <div class="lake-tabs"><span class="tab">Live tail</span><span class="tab active">Search<span class="count">8 412 results</span></span><span class="tab">Aggregates</span><span class="tab">Taxonomy</span></div>
+        <div class="pg">
+          <div class="card search-bar">
+            <div class="hstack"><input class="input mono" value="member:maria.cho channel:#general type:message_received length:>=40 since:7d" style="flex: 1;" /><button class="btn primary sm">Search</button><button class="btn ghost sm">Save as filter</button></div>
+            <div class="filter-row">
+              <span class="chip">member · @maria.cho <span class="x">✕</span></span>
+              <span class="chip">channel · #general <span class="x">✕</span></span>
+              <span class="chip">event_type · message_received <span class="x">✕</span></span>
+              <span class="chip">length · ≥ 40 <span class="x">✕</span></span>
+              <span class="chip">since · 7d <span class="x">✕</span></span>
+              <span class="chip">+ filter</span>
+            </div>
+          </div>
+          <div class="hstack" style="justify-content: space-between;">
+            <div class="dim mono" style="font-size: 11px;">8 412 events · 214 unique members · 38 channels · 2 480 matched at least one rule</div>
+            <div class="hstack mono" style="font-size: 11px; color: var(--text-3);"><span>↗ open in rule editor</span><span>·</span><span>↗ export csv</span></div>
+          </div>
+          <div class="card" style="padding: 0;">
+            <table class="tbl">
+              <tr><th class="mono">id</th><th>at</th><th>member</th><th>event_type</th><th>where</th><th>summary</th><th>matched</th></tr>
+              <tr><td class="mono dim">84102</td><td class="mono">14:08:22</td><td><span class="hstack"><span class="avatar h0">M</span><span class="mono">@maria.cho</span></span></td><td class="mono" style="color: var(--accent);">message_received</td><td class="mono dim">#general</td><td>"Yeah — sounds like your hash table is colliding…"</td><td><span class="tag accent">helpful_reply</span></td></tr>
+              <tr><td class="mono dim">83988</td><td class="mono">12:42:01</td><td><span class="hstack"><span class="avatar h0">M</span><span class="mono">@maria.cho</span></span></td><td class="mono" style="color: var(--accent);">message_received</td><td class="mono dim">#general</td><td>"Re sorting: try a stable sort first then re…"</td><td><span class="tag accent">helpful_reply</span></td></tr>
+              <tr><td class="mono dim">83740</td><td class="mono">10:14:57</td><td><span class="hstack"><span class="avatar h0">M</span><span class="mono">@maria.cho</span></span></td><td class="mono" style="color: var(--accent);">message_received</td><td class="mono dim">#general</td><td>"@haskell.thebes that link redirects to …"</td><td class="dim">cooldown</td></tr>
+              <tr><td class="mono dim">82918</td><td class="mono">y 23:08</td><td><span class="hstack"><span class="avatar h0">M</span><span class="mono">@maria.cho</span></span></td><td class="mono" style="color: var(--accent);">message_received</td><td class="mono dim">#general</td><td>"the binary log is base-2 of the count, so for…"</td><td><span class="tag accent">helpful_reply</span></td></tr>
+              <tr><td class="mono dim">82711</td><td class="mono">y 19:44</td><td><span class="hstack"><span class="avatar h0">M</span><span class="mono">@maria.cho</span></span></td><td class="mono" style="color: var(--accent);">message_received</td><td class="mono dim">#general</td><td>"Recursion is fine here, just bound the depth …"</td><td><span class="tag accent">helpful_reply</span></td></tr>
+              <tr><td class="mono dim">81550</td><td class="mono">2d ago</td><td><span class="hstack"><span class="avatar h0">M</span><span class="mono">@maria.cho</span></span></td><td class="mono" style="color: var(--accent);">message_received</td><td class="mono dim">#general</td><td>"Use Big-O for the upper bound only — Theta is …"</td><td><span class="tag accent">helpful_reply</span></td></tr>
+              <tr><td class="mono dim">81022</td><td class="mono">2d ago</td><td><span class="hstack"><span class="avatar h0">M</span><span class="mono">@maria.cho</span></span></td><td class="mono" style="color: var(--accent);">message_received</td><td class="mono dim">#general</td><td>"Yeah, Quarkus dev mode is fast — just save."</td><td class="dim">length 38 &lt; 40</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- t3 aggregates -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">t3</span><span class="v-name">Tab · Aggregates</span></div>
+  <p class="variant-desc">Volume over time, by event type, by channel, by member. Click any bar / segment to drop into search with that filter applied.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / event-lake / aggregates</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item active">Event lake</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / event lake / aggregates</span></div>
+        <div class="lake-tabs"><span class="tab">Live tail</span><span class="tab">Search</span><span class="tab active">Aggregates<span class="count">14d window</span></span><span class="tab">Taxonomy</span></div>
+        <div class="pg">
+          <div class="hstack" style="justify-content: space-between;">
+            <div class="hstack"><span class="tag">14d</span><span class="tag">30d</span><span class="tag accent">90d</span><span class="tag">all-time</span></div>
+            <div class="hstack mono dim" style="font-size: 11px;"><span>group by</span><span class="tag">event_type</span><span class="tag">channel</span><span class="tag">member</span></div>
+          </div>
+
+          <div class="card" style="padding: 16px 18px;">
+            <div class="section-title">Daily volume by event type · 14d</div>
+            <div class="chart" style="margin-top: 12px;">
+              <svg viewBox="0 0 600 200" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%;">
+                <!-- stacked-ish lines -->
+                <path d="M0,180 L40,170 L80,150 L120,140 L160,120 L200,130 L240,100 L280,110 L320,90 L360,70 L400,80 L440,55 L480,60 L520,40 L560,50 L600,30 L600,200 L0,200 Z" fill="oklch(0.30 0.08 275 / 0.40)" stroke="var(--accent)" stroke-width="1.4"/>
+                <path d="M0,190 L40,185 L80,180 L120,178 L160,170 L200,172 L240,160 L280,158 L320,150 L360,142 L400,140 L440,132 L480,128 L520,120 L560,118 L600,112 L600,200 L0,200 Z" fill="oklch(0.40 0.07 80 / 0.30)" stroke="var(--coin)" stroke-width="1.2"/>
+                <path d="M0,196 L40,194 L80,190 L120,188 L160,182 L200,184 L240,180 L280,178 L320,170 L360,168 L400,166 L440,160 L480,158 L520,154 L560,150 L600,148 L600,200 L0,200 Z" fill="oklch(0.40 0.07 200 / 0.30)" stroke="var(--token)" stroke-width="1.2"/>
+              </svg>
+            </div>
+            <div class="hstack" style="margin-top: 10px; gap: 14px;">
+              <span class="hstack mono" style="font-size: 11px;"><span class="dot" style="background: var(--accent);"></span>message_received · 312k</span>
+              <span class="hstack mono" style="font-size: 11px;"><span class="dot" style="background: var(--coin);"></span>reaction_added · 88k</span>
+              <span class="hstack mono" style="font-size: 11px;"><span class="dot" style="background: var(--token);"></span>voice_join/leave · 14k</span>
+              <span class="hstack mono dim" style="font-size: 11px; margin-left: auto;">click any band to filter →</span>
+            </div>
+          </div>
+
+          <div class="ts-grid">
+            <div class="card" style="padding: 14px 16px;">
+              <div class="section-title">Top channels · 14d</div>
+              <div class="vstack" style="margin-top: 10px;">
+                <div class="bar-row"><span class="mono" style="width: 130px;">#general</span><div class="bar"><span style="width: 88%;"></span></div><span class="mono dim">122k</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">#cs-talk</span><div class="bar"><span style="width: 64%;"></span></div><span class="mono dim">88k</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">voice/study-room</span><div class="bar"><span style="width: 42%;"></span></div><span class="mono dim">58k</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">forum/help</span><div class="bar"><span style="width: 28%;"></span></div><span class="mono dim">39k</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">#announcements</span><div class="bar"><span style="width: 12%;"></span></div><span class="mono dim">17k</span></div>
+              </div>
+            </div>
+            <div class="card" style="padding: 14px 16px;">
+              <div class="section-title">Top members · 14d</div>
+              <div class="vstack" style="margin-top: 10px;">
+                <div class="bar-row"><span class="mono" style="width: 130px;">@maria.cho</span><div class="bar"><span style="width: 78%;"></span></div><span class="mono dim">2 480</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">@haskell.thebes</span><div class="bar"><span style="width: 70%;"></span></div><span class="mono dim">2 188</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">@dmitri.v</span><div class="bar"><span style="width: 58%;"></span></div><span class="mono dim">1 802</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">@priya.k</span><div class="bar"><span style="width: 44%;"></span></div><span class="mono dim">1 412</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">@ren.lin</span><div class="bar"><span style="width: 30%;"></span></div><span class="mono dim">962</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- t4 taxonomy -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">t4</span><span class="v-name">Tab · Taxonomy — for rule authors</span></div>
+  <p class="variant-desc">Every event_type Synapse ingests, with row count, schema fields, sample event, and "build a rule from this" CTA. The bridge from observed data to authored rules.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / event-lake / taxonomy</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item active">Event lake</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / event lake / taxonomy</span></div>
+        <div class="lake-tabs"><span class="tab">Live tail</span><span class="tab">Search</span><span class="tab">Aggregates</span><span class="tab active">Taxonomy<span class="count">11 types</span></span></div>
+        <div class="pg">
+          <div class="dim" style="font-size: 13px; max-width: 680px;">Each event type below is a row schema in the lake. Click <b>build rule</b> to start a new rule scoped to that event_type — Synapse pre-populates the predicate catalog with the fields available.</div>
+
+          <div class="tax-grid">
+            <div class="card tax-card">
+              <div class="hstack" style="justify-content: space-between;"><span class="name">message_received</span><span class="tag" style="color: var(--accent);">most common</span></div>
+              <div class="count">1 821 480</div>
+              <div class="desc">Fields: content_length, channel, thread_id, is_reply, mentions[], has_attachments, created_at.</div>
+              <div class="actions"><button class="btn sm">Build rule</button><button class="btn sm ghost">Sample →</button></div>
+            </div>
+            <div class="card tax-card">
+              <div class="hstack" style="justify-content: space-between;"><span class="name">reaction_added</span></div>
+              <div class="count">412 088</div>
+              <div class="desc">Fields: emoji_name, emoji_ext_id, message_id, target_member, count.</div>
+              <div class="actions"><button class="btn sm">Build rule</button><button class="btn sm ghost">Sample →</button></div>
+            </div>
+            <div class="card tax-card">
+              <div class="hstack" style="justify-content: space-between;"><span class="name">voice_join</span></div>
+              <div class="count">88 412</div>
+              <div class="desc">Fields: channel, joined_at. Pairs with voice_leave to compute session length.</div>
+              <div class="actions"><button class="btn sm">Build rule</button></div>
+            </div>
+            <div class="card tax-card">
+              <div class="hstack" style="justify-content: space-between;"><span class="name">voice_leave</span></div>
+              <div class="count">88 401</div>
+              <div class="desc">Fields: channel, left_at, duration_secs. 11 currently-open sessions.</div>
+              <div class="actions"><button class="btn sm">Build rule</button></div>
+            </div>
+            <div class="card tax-card">
+              <div class="hstack" style="justify-content: space-between;"><span class="name">thread_created</span></div>
+              <div class="count">2 401</div>
+              <div class="desc">Fields: parent_channel, thread_type, owner, name, tags[].</div>
+              <div class="actions"><button class="btn sm">Build rule</button></div>
+            </div>
+            <div class="card tax-card">
+              <div class="hstack" style="justify-content: space-between;"><span class="name">message_edited</span></div>
+              <div class="count">14 220</div>
+              <div class="desc">UPSERT into messages — only current state is kept. Edit history not stored.</div>
+              <div class="actions"><button class="btn sm">Build rule</button></div>
+            </div>
+            <div class="card tax-card">
+              <div class="hstack" style="justify-content: space-between;"><span class="name">member_role_change</span></div>
+              <div class="count">1 088</div>
+              <div class="desc">Fields: roles_added[], roles_removed[]. Power gating + officer-promoted rules.</div>
+              <div class="actions"><button class="btn sm">Build rule</button></div>
+            </div>
+            <div class="card tax-card">
+              <div class="hstack" style="justify-content: space-between;"><span class="name">message_attachment</span></div>
+              <div class="count">8 412</div>
+              <div class="desc">Fields: filename, content_type, size, width, height, duration_secs.</div>
+              <div class="actions"><button class="btn sm">Build rule</button></div>
+            </div>
+            <div class="card tax-card">
+              <div class="hstack" style="justify-content: space-between;"><span class="name">message_pin</span></div>
+              <div class="count">488</div>
+              <div class="desc">Pin / unpin events. Often used by officer-kudos rule.</div>
+              <div class="actions"><button class="btn sm">Build rule</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body></html>

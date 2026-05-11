@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" /><title>02 · Admin dashboard</title>
+<link rel="stylesheet" href="screen.css" />
+<style>
+  .variant-row { grid-template-columns: 1fr; }
+  .artboard .body { min-height: 720px; }
+  .mini-shell { display: grid; grid-template-columns: 220px 1fr; height: 720px; }
+  .mini-shell .sb { border-right: 1px solid var(--line); background: var(--bg-1); padding: 14px 10px; display: flex; flex-direction: column; gap: 14px; font-size: 12.5px; }
+  .mini-shell .sb .nav-item { padding: 6px 8px; font-size: 12.5px; }
+  .mini-shell .main { display: flex; flex-direction: column; overflow: hidden; }
+  .mini-shell .tb { padding: 10px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .mini-shell .pg { padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat-grid .stat { padding: 12px 14px; }
+  .stat-grid .stat-value { font-size: 22px; }
+  .scan-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--bg-1);
+  }
+  .scan-row .name { font-weight: 500; }
+  .scan-row .desc { font-size: 11.5px; color: var(--text-3); font-family: var(--mono); }
+  .pulse {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--live);
+    box-shadow: 0 0 0 0 oklch(0.74 0.16 145 / 0.6);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+  .spark { height: 36px; width: 100%; }
+  .spark path { fill: oklch(0.30 0.08 275 / 0.30); stroke: var(--accent); stroke-width: 1.4; }
+  .feed { display: flex; flex-direction: column; gap: 0; }
+  .feed .row {
+    display: grid; grid-template-columns: 80px 24px 1fr auto; gap: 12px; align-items: center;
+    padding: 8px 0; border-bottom: 1px dashed var(--line-soft);
+    font-size: 12.5px;
+  }
+  .feed .row:last-child { border-bottom: none; }
+  .feed .ts { font-family: var(--mono); font-size: 11px; color: var(--text-4); }
+  .feed .who { font-family: var(--mono); font-size: 11.5px; }
+  .col-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
+  .col-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  /* v3 — radar/cmd-pal feel */
+  .v3 .panel { display: grid; grid-template-columns: 1fr 280px; gap: 14px; }
+  .v3 .system { padding: 14px; }
+  .v3 .system h4 { margin: 0 0 8px; font-size: 11px; font-family: var(--mono); letter-spacing: 0.08em; color: var(--text-3); text-transform: uppercase; }
+  .v3 .ring-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .ring-stat {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 14px; border: 1px solid var(--line); border-radius: var(--r-sm);
+  }
+  .ring-stat .ring-sm {
+    --p: 70; width: 64px; height: 64px;
+    border-radius: 50%;
+    background: conic-gradient(var(--accent) calc(var(--p)*1%), var(--bg-3) 0);
+    display: grid; place-items: center; position: relative;
+  }
+  .ring-stat .ring-sm::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--bg-1); }
+  .ring-stat .ring-sm span { position: relative; font-family: var(--mono); font-size: 12px; }
+
+  /* v4 — single-pane log + status rail */
+  .v4 .layout { display: grid; grid-template-columns: 1fr 320px; gap: 14px; height: 100%; }
+  .v4 .rail { display: flex; flex-direction: column; gap: 14px; }
+  .health-bar { display: flex; flex-direction: column; gap: 6px; padding: 12px; }
+  .health-bar .row { display: flex; justify-content: space-between; font-size: 12px; }
+  .health-bar .v { font-family: var(--mono); }
+</style>
+</head>
+<body>
+
+<div class="screen-head">
+  <div><div class="num">02 · admin</div><h1>Admin dashboard</h1></div>
+  <div class="desc">Guild health, scanner state, rule activity, and recent evaluations. Calm, dense, observability-first — you should be able to tell at a glance whether ingestion is healthy.</div>
+  <div class="right"><a href="../index.html" class="back">← back to index</a></div>
+</div>
+
+<div class="canvas">
+
+<!-- v1 — classic dense -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v1</span><span class="v-name">Classic — dense overview</span><span class="v-tag">recommended</span></div>
+  <p class="variant-desc">Four KPIs across the top, scanner state in the upper right, recent rule evaluations as a feed, narrow channels list. Highest information density.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / overview</div></div>
+    <div class="mini-shell">
+      <aside class="sb">
+        <div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div><div class="brand-sub">acm-franklin</div></div></div>
+        <div class="guild"><div class="guild-icon">A</div><div><div class="guild-name">ACM @ Franklin</div><div class="guild-id">1 209 384 192 8810</div></div></div>
+        <div class="nav-group">
+          <div class="nav-label">admin</div>
+          <a class="nav-item active"><span class="ic dot"></span> Overview</a>
+          <a class="nav-item"><span class="ic sq"></span> Event lake <span class="count">2.4M</span></a>
+          <a class="nav-item"><span class="ic di"></span> Rules <span class="count">38</span></a>
+          <a class="nav-item"><span class="ic cr"></span> Members <span class="count">1 248</span></a>
+          <a class="nav-item"><span class="ic bar"></span> Channels <span class="count">42</span></a>
+          <a class="nav-item"><span class="ic sq"></span> Seasons <span class="count">3</span></a>
+          <a class="nav-item"><span class="ic dot"></span> Historical scan</a>
+          <a class="nav-item"><span class="ic cr"></span> Settings</a>
+        </div>
+        <div style="margin-top: auto; padding: 10px; border-top: 1px solid var(--line-soft); font-family: var(--mono); font-size: 10.5px; color: var(--text-3);">
+          @haskell.thebes · admin<br/><span style="color: var(--text-4);">switch to member view →</span>
+        </div>
+      </aside>
+      <div class="main">
+        <div class="tb">
+          <span>admin</span><span class="dim">/</span><span style="color: var(--text);">overview</span>
+          <span style="margin-left: auto;" class="hstack"><span class="pulse"></span><span style="color: var(--live);">gateway · live</span><span class="dim">·</span><span>uptime 14d 3h</span><span class="dim">·</span><span>last reconciled 4m ago</span></span>
+        </div>
+        <div class="pg">
+          <!-- KPIs -->
+          <div class="stat-grid">
+            <div class="card stat"><div class="stat-label">events · 24h</div><div class="stat-value">48 102</div><div class="stat-delta up">+12.4% vs 7d avg</div></div>
+            <div class="card stat"><div class="stat-label">rule fires · 24h</div><div class="stat-value">3 481</div><div class="stat-delta">38 enabled · 0 errored</div></div>
+            <div class="card stat"><div class="stat-label">active members · 24h</div><div class="stat-value">312<span class="dim mono" style="font-size: 13px;"> / 1248</span></div><div class="stat-delta up">+18 new this week</div></div>
+            <div class="card stat"><div class="stat-label">coverage</div><div class="stat-value">100%</div><div class="stat-delta">42 / 42 channels · backfilled</div></div>
+          </div>
+          <!-- col-2 -->
+          <div class="col-2">
+            <div class="card" style="padding: 14px 16px;">
+              <div class="hstack" style="justify-content: space-between; margin-bottom: 10px;">
+                <div class="section-title" style="flex: 1;">Event volume · last 14 days</div>
+                <span class="tag">message_received</span><span class="tag accent">reaction_added</span><span class="tag">voice_join</span>
+              </div>
+              <svg viewBox="0 0 600 120" class="spark" preserveAspectRatio="none">
+                <path d="M0,90 L40,72 L80,80 L120,55 L160,60 L200,40 L240,50 L280,30 L320,38 L360,20 L400,28 L440,15 L480,22 L520,8 L560,18 L600,10 L600,120 L0,120 Z"/>
+              </svg>
+              <div class="hstack" style="justify-content: space-between; margin-top: 8px;" class="dim mono"><span class="mono dim" style="font-size: 11px;">Apr 25</span><span class="mono dim" style="font-size: 11px;">May 9</span></div>
+            </div>
+            <div class="card" style="padding: 14px 16px;">
+              <div class="section-title">Scanner state</div>
+              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                <div class="scan-row"><span class="pulse"></span><div style="flex: 1;"><div class="name">Live · gateway listener</div><div class="desc">JDA gateway · last event 2s ago · session id 8a3f…</div></div><button class="btn sm ghost">Restart</button></div>
+                <div class="scan-row"><div class="dot"></div><div style="flex: 1;"><div class="name">Historical · idle</div><div class="desc">last run 14d ago · 100% coverage · 38 channels</div></div><button class="btn sm">New scan →</button></div>
+                <div class="scan-row"><div class="dot live"></div><div style="flex: 1;"><div class="name">Rule engine</div><div class="desc">38 enabled · 0 errored · 1 paused (cooldown debug)</div></div><button class="btn sm ghost">Open</button></div>
+              </div>
+            </div>
+          </div>
+          <!-- recent rule fires -->
+          <div class="card" style="padding: 14px 16px;">
+            <div class="hstack" style="justify-content: space-between; margin-bottom: 10px;">
+              <div class="section-title">Recent rule evaluations · live tail</div>
+              <span class="tag live">streaming</span>
+            </div>
+            <div class="feed">
+              <div class="row"><span class="ts">14:08:22</span><span class="avatar h0">M</span><span><span class="who">@maria.cho</span> <span class="dim">→</span> <span class="tag accent">rule · helpful_reply</span> matched on <span class="mono dim">message_received #84102</span></span><span><span class="tag coin">+25</span> <span class="tag xp">+40</span></span></div>
+              <div class="row"><span class="ts">14:08:19</span><span class="avatar h2">J</span><span><span class="who">@jules.t</span> <span class="dim">→</span> <span class="tag accent">rule · voice_attendance</span> matched on <span class="mono dim">voice_session #21993</span></span><span><span class="tag coin">+10</span></span></div>
+              <div class="row"><span class="ts">14:08:14</span><span class="avatar h4">P</span><span><span class="who">@priya.k</span> <span class="dim">→</span> <span class="tag accent">rule · forum_post</span> matched on <span class="mono dim">thread_created #4280</span></span><span><span class="tag token">+1</span> <span class="tag xp">+80</span></span></div>
+              <div class="row"><span class="ts">14:08:09</span><span class="avatar h1">D</span><span><span class="who">@dmitri.v</span> <span class="dim">→</span> <span class="tag warn">cooldown</span> on rule helpful_reply · 38s remain</span><span class="dim">skipped</span></div>
+              <div class="row"><span class="ts">14:08:02</span><span class="avatar h3">R</span><span><span class="who">@ren.lin</span> <span class="dim">→</span> <span class="tag accent">rule · reaction_thanks</span> matched on <span class="mono dim">reaction_added</span></span><span><span class="tag coin">+5</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v2 — radar / system -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v2</span><span class="v-name">System-status forward</span><span class="v-tag">ops feel</span></div>
+  <p class="variant-desc">Reframes the dashboard as an instance health page. KPIs are still here but the radar of subsystems is the hero — for an admin who runs this thing, not just configures it.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / overview</div></div>
+    <div class="mini-shell v3">
+      <aside class="sb">
+        <div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div><div class="brand-sub">acm-franklin</div></div></div>
+        <div class="guild"><div class="guild-icon">A</div><div><div class="guild-name">ACM @ Franklin</div><div class="guild-id">1 209 384 192 8810</div></div></div>
+        <div class="nav-group">
+          <div class="nav-label">admin</div>
+          <a class="nav-item active"><span class="ic dot"></span> Overview</a>
+          <a class="nav-item"><span class="ic sq"></span> Event lake</a>
+          <a class="nav-item"><span class="ic di"></span> Rules</a>
+          <a class="nav-item"><span class="ic cr"></span> Members</a>
+          <a class="nav-item"><span class="ic bar"></span> Channels</a>
+          <a class="nav-item"><span class="ic sq"></span> Seasons</a>
+          <a class="nav-item"><span class="ic dot"></span> Historical scan</a>
+          <a class="nav-item"><span class="ic cr"></span> Settings</a>
+        </div>
+      </aside>
+      <div class="main">
+        <div class="tb"><span>admin / overview</span><span style="margin-left: auto;" class="hstack"><span class="pulse"></span><span style="color: var(--live);">all systems · nominal</span></span></div>
+        <div class="pg">
+          <div class="panel">
+            <div class="card system">
+              <h4>Subsystem health · last 60s</h4>
+              <div class="ring-grid">
+                <div class="ring-stat"><div class="ring-sm" style="--p: 100;"><span>100%</span></div><div class="mono dim" style="font-size: 11px;">gateway · live</div></div>
+                <div class="ring-stat"><div class="ring-sm" style="--p: 100;"><span>OK</span></div><div class="mono dim" style="font-size: 11px;">db · sqlite</div></div>
+                <div class="ring-stat"><div class="ring-sm" style="--p: 98;"><span>98%</span></div><div class="mono dim" style="font-size: 11px;">rule engine</div></div>
+                <div class="ring-stat"><div class="ring-sm" style="--p: 100;"><span>OK</span></div><div class="mono dim" style="font-size: 11px;">migrations</div></div>
+                <div class="ring-stat"><div class="ring-sm" style="--p: 100;"><span>0</span></div><div class="mono dim" style="font-size: 11px;">errors · 24h</div></div>
+                <div class="ring-stat"><div class="ring-sm" style="--p: 24;"><span>24%</span></div><div class="mono dim" style="font-size: 11px;">disk used</div></div>
+              </div>
+            </div>
+            <div class="card" style="padding: 14px;">
+              <div class="section-title">Quick actions</div>
+              <div class="vstack" style="margin-top: 10px;">
+                <button class="btn">Run historical scan →</button>
+                <button class="btn">Recalculate rewards</button>
+                <button class="btn ghost">Restart gateway listener</button>
+                <button class="btn ghost">Export event lake</button>
+              </div>
+              <div class="divider" style="margin: 14px 0;"></div>
+              <div class="section-title">Watermarks</div>
+              <table class="tbl mono" style="margin-top: 8px;">
+                <tr><td class="dim" style="padding: 4px 0;">live</td><td style="text-align: right; padding: 4px 0;">2s ago</td></tr>
+                <tr><td class="dim" style="padding: 4px 0;">historical</td><td style="text-align: right; padding: 4px 0;">14d ago</td></tr>
+                <tr><td class="dim" style="padding: 4px 0;">reconcile</td><td style="text-align: right; padding: 4px 0;">4m ago</td></tr>
+              </table>
+            </div>
+          </div>
+          <div class="col-3">
+            <div class="card stat"><div class="stat-label">events · 24h</div><div class="stat-value">48 102</div><div class="stat-delta up">+12.4%</div></div>
+            <div class="card stat"><div class="stat-label">rule fires · 24h</div><div class="stat-value">3 481</div><div class="stat-delta">38 enabled</div></div>
+            <div class="card stat"><div class="stat-label">active members · 24h</div><div class="stat-value">312</div><div class="stat-delta">25% of guild</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v3 — feed-first -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v3</span><span class="v-name">Feed-first — what's happening right now</span><span class="v-tag">live tail center</span></div>
+  <p class="variant-desc">If the admin opens this 10× a day, they're checking "is anything weird firing?". Lead with the tail; KPIs become a quiet right rail.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / overview</div></div>
+    <div class="mini-shell v4">
+      <aside class="sb">
+        <div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div><div class="brand-sub">acm-franklin</div></div></div>
+        <div class="guild"><div class="guild-icon">A</div><div><div class="guild-name">ACM @ Franklin</div><div class="guild-id">1 209 384 192 8810</div></div></div>
+        <div class="nav-group">
+          <div class="nav-label">admin</div>
+          <a class="nav-item active"><span class="ic dot"></span> Overview</a>
+          <a class="nav-item"><span class="ic sq"></span> Event lake</a>
+          <a class="nav-item"><span class="ic di"></span> Rules</a>
+          <a class="nav-item"><span class="ic cr"></span> Members</a>
+          <a class="nav-item"><span class="ic bar"></span> Channels</a>
+          <a class="nav-item"><span class="ic sq"></span> Seasons</a>
+          <a class="nav-item"><span class="ic dot"></span> Historical scan</a>
+        </div>
+      </aside>
+      <div class="main">
+        <div class="tb"><span>admin / overview</span><span class="dim" style="margin-left: auto;">14:08:22</span></div>
+        <div class="pg" style="padding: 14px 18px;">
+          <div class="layout">
+            <div class="card" style="padding: 14px 16px;">
+              <div class="hstack" style="justify-content: space-between;">
+                <div class="section-title">Live activity · all event types</div>
+                <div class="hstack"><input class="input mono" placeholder="filter member, channel, event_type" style="width: 280px;" /><span class="tag live">streaming</span></div>
+              </div>
+              <div class="feed" style="margin-top: 10px;">
+                <div class="row"><span class="ts">14:08:22</span><span class="avatar h0">M</span><span><span class="who">@maria.cho</span> sent message in <span class="mono dim">#general</span> → matched <span class="tag accent">helpful_reply</span></span><span><span class="tag coin">+25</span> <span class="tag xp">+40</span></span></div>
+                <div class="row"><span class="ts">14:08:19</span><span class="avatar h2">J</span><span><span class="who">@jules.t</span> joined <span class="mono dim">voice/study-room</span> → <span class="tag accent">voice_attendance</span></span><span><span class="tag coin">+10</span></span></div>
+                <div class="row"><span class="ts">14:08:14</span><span class="avatar h4">P</span><span><span class="who">@priya.k</span> opened thread <span class="mono dim">"hash collisions"</span> → <span class="tag accent">forum_post</span></span><span><span class="tag token">+1</span> <span class="tag xp">+80</span></span></div>
+                <div class="row"><span class="ts">14:08:09</span><span class="avatar h1">D</span><span><span class="who">@dmitri.v</span> sent message in <span class="mono dim">#help</span> → cooldown <span class="tag warn">38s</span></span><span class="dim">skipped</span></div>
+                <div class="row"><span class="ts">14:08:02</span><span class="avatar h3">R</span><span><span class="who">@ren.lin</span> reacted ✨ to msg by <span class="who">@haskell</span> → <span class="tag accent">reaction_thanks</span></span><span><span class="tag coin">+5</span></span></div>
+                <div class="row"><span class="ts">14:07:58</span><span class="avatar h5">S</span><span><span class="who">@sasha.b</span> reacted 👍 in <span class="mono dim">#announcements</span> · no rule matched</span><span class="dim">—</span></div>
+                <div class="row"><span class="ts">14:07:51</span><span class="avatar h0">M</span><span><span class="who">@mira.q</span> left <span class="mono dim">voice/study-room</span> after 47m → <span class="tag accent">voice_attendance</span></span><span><span class="tag coin">+47</span></span></div>
+                <div class="row"><span class="ts">14:07:44</span><span class="avatar h2">B</span><span><span class="who">@bo.x</span> message edited · <span class="mono dim">UPSERT</span> · no rule matched</span><span class="dim">—</span></div>
+              </div>
+            </div>
+            <div class="rail">
+              <div class="card health-bar">
+                <div class="hstack" style="justify-content: space-between; margin-bottom: 4px;"><span class="section-title" style="margin: 0; flex: 1;">Health</span><span class="pulse"></span></div>
+                <div class="row"><span class="dim">gateway</span><span class="v" style="color: var(--live);">live · 2s</span></div>
+                <div class="row"><span class="dim">historical</span><span class="v dim">idle · 14d</span></div>
+                <div class="row"><span class="dim">db</span><span class="v" style="color: var(--live);">ok</span></div>
+                <div class="row"><span class="dim">errors · 24h</span><span class="v">0</span></div>
+              </div>
+              <div class="card stat"><div class="stat-label">events · 24h</div><div class="stat-value">48 102</div><div class="stat-delta up">+12.4%</div></div>
+              <div class="card stat"><div class="stat-label">rule fires · 24h</div><div class="stat-value">3 481</div></div>
+              <div class="card" style="padding: 12px 14px;">
+                <div class="section-title">Top rules · 24h</div>
+                <table class="tbl mono" style="margin-top: 8px; font-size: 11.5px;">
+                  <tr><td>helpful_reply</td><td style="text-align: right;">982 ×</td></tr>
+                  <tr><td>voice_attendance</td><td style="text-align: right;">410 ×</td></tr>
+                  <tr><td>reaction_thanks</td><td style="text-align: right;">388 ×</td></tr>
+                  <tr><td>forum_post</td><td style="text-align: right;">62 ×</td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v4 — minimal/cmd-pal -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v4</span><span class="v-name">Minimal · search-driven</span><span class="v-tag">power user</span></div>
+  <p class="variant-desc">Almost no chrome. A command-palette ⌘K is the primary navigation. The dashboard is a single block of "what changed", quietly. For the admin who knows where everything is.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / overview</div></div>
+    <div style="padding: 60px 80px; min-height: 720px; background: var(--bg-0); display: flex; flex-direction: column; gap: 26px;">
+      <div class="hstack" style="justify-content: space-between;">
+        <div>
+          <div class="mono dim" style="font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase;">acm-franklin · synapse instance · v0.6</div>
+          <h1 style="font-size: 32px; font-weight: 500; letter-spacing: -0.02em; margin: 6px 0;">Today: <span class="dim">3 481 evaluations, 0 errors, 312 active members.</span></h1>
+        </div>
+        <div class="hstack"><span class="kbd">⌘ K</span><span class="dim mono" style="font-size: 11px;">go anywhere</span></div>
+      </div>
+      <div class="card" style="padding: 18px 22px; max-width: 720px;">
+        <input class="input mono" placeholder="rule helpful_reply · member alice · channel #general · scan…" style="width: 100%; background: transparent; border: none; padding: 0; font-size: 16px;" />
+        <div class="divider" style="margin: 14px 0;"></div>
+        <div class="vstack" style="gap: 4px; font-size: 13px;">
+          <div class="hstack" style="padding: 8px 0;"><span class="kbd">↵</span><span style="color: var(--text-2);">Open rule editor for <b>helpful_reply</b></span><span class="dim mono" style="margin-left: auto; font-size: 11px;">last fired 2s ago</span></div>
+          <div class="hstack" style="padding: 8px 0;"><span class="kbd">↵</span><span style="color: var(--text-2);">Member <b>alice</b> · profile</span><span class="dim mono" style="margin-left: auto; font-size: 11px;">2 480 events</span></div>
+          <div class="hstack" style="padding: 8px 0;"><span class="kbd">↵</span><span style="color: var(--text-2);">Run historical scan on <b>#general</b></span><span class="dim mono" style="margin-left: auto; font-size: 11px;">backfill</span></div>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns: repeat(4, 1fr); gap: 0; border: 1px solid var(--line); border-radius: var(--r);">
+        <div style="padding: 18px 20px; border-right: 1px solid var(--line);"><div class="stat-label">events · 24h</div><div class="stat-value" style="font-size: 28px;">48 102</div></div>
+        <div style="padding: 18px 20px; border-right: 1px solid var(--line);"><div class="stat-label">rule fires</div><div class="stat-value" style="font-size: 28px;">3 481</div></div>
+        <div style="padding: 18px 20px; border-right: 1px solid var(--line);"><div class="stat-label">active</div><div class="stat-value" style="font-size: 28px;">312</div></div>
+        <div style="padding: 18px 20px;"><div class="stat-label">scanner</div><div class="stat-value" style="font-size: 18px; color: var(--live);"><span class="pulse" style="display: inline-block; margin-right: 8px;"></span>live · 2s</div></div>
+      </div>
+      <div class="dim mono" style="font-size: 11px;">↵ go · ⌘ , settings · g e events · g r rules · g m members · ⌘ shift d switch to member view</div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body></html>

@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" /><title>08 · Channels + historical scan</title>
+<link rel="stylesheet" href="screen.css" />
+<style>
+  .variant-row { grid-template-columns: 1fr; }
+  .mini-shell { display: grid; grid-template-columns: 220px 1fr; min-height: 760px; }
+  .mini-shell .sb { border-right: 1px solid var(--line); background: var(--bg-1); padding: 14px 10px; display: flex; flex-direction: column; gap: 14px; font-size: 12.5px; }
+  .mini-shell .main { display: flex; flex-direction: column; }
+  .mini-shell .tb { padding: 10px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .mini-shell .pg { padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+
+  .cat-block { display: flex; flex-direction: column; }
+  .cat-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-bottom: none;
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-2);
+    border-radius: var(--r) var(--r) 0 0;
+  }
+  .ch-row {
+    display: grid; grid-template-columns: 28px 1fr 100px 100px 100px 100px 110px;
+    gap: 12px; padding: 9px 16px; align-items: center;
+    border: 1px solid var(--line);
+    border-top: none;
+    font-size: 13px;
+    background: var(--bg-1);
+  }
+  .ch-row:last-child { border-radius: 0 0 var(--r) var(--r); }
+  .ch-row .num { font-family: var(--mono); font-feature-settings: "tnum"; font-size: 12.5px; text-align: right; color: var(--text-2); }
+  .ch-row .ic-ch { font-family: var(--mono); color: var(--text-3); width: 18px; text-align: center; }
+  .ch-row .name { font-weight: 500; }
+  .ch-row .check {
+    width: 16px; height: 16px; border: 1.5px solid var(--line); border-radius: 3px;
+    background: var(--bg-2); display: inline-grid; place-items: center;
+  }
+  .ch-row .check.on { background: var(--accent); border-color: var(--accent); color: oklch(0.18 0.02 270); font-size: 11px; font-weight: 700; }
+  .ch-row .check.partial { background: var(--bg-2); border-color: var(--accent); color: var(--accent); }
+  .ch-row.excluded { opacity: 0.5; background: var(--bg-0); }
+
+  .scan-stepper {
+    display: flex; gap: 0; padding: 0; margin: 0;
+    list-style: none;
+  }
+  .scan-step {
+    flex: 1;
+    padding: 14px 18px;
+    border: 1px solid var(--line);
+    border-right: none;
+    background: var(--bg-1);
+    display: flex; flex-direction: column; gap: 4px;
+    position: relative;
+  }
+  .scan-step:last-child { border-right: 1px solid var(--line); border-radius: 0 var(--r) var(--r) 0; }
+  .scan-step:first-child { border-radius: var(--r) 0 0 var(--r); }
+  .scan-step.active { background: var(--accent-bg); border-color: var(--accent-dim); }
+  .scan-step.done { background: var(--bg-1); }
+  .scan-step .num {
+    font-family: var(--mono); font-size: 11px; color: var(--text-3); letter-spacing: 0.08em;
+  }
+  .scan-step.active .num { color: var(--accent); }
+  .scan-step.done .num { color: var(--ok); }
+  .scan-step .ttl { font-size: 14px; font-weight: 500; }
+  .scan-step .sub { font-size: 11.5px; color: var(--text-3); font-family: var(--mono); }
+
+  .scan-progress {
+    height: 8px; border-radius: 4px; background: var(--bg-3); overflow: hidden;
+  }
+  .scan-progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), oklch(0.78 0.14 200)); }
+
+  .log-line {
+    font-family: var(--mono); font-size: 11.5px;
+    padding: 5px 14px; border-bottom: 1px dashed var(--line-soft);
+    color: var(--text-2); display: grid;
+    grid-template-columns: 90px 80px 1fr;
+    gap: 10px;
+  }
+  .log-line .ts { color: var(--text-4); }
+  .log-line .lvl { color: var(--text-3); }
+  .log-line .lvl.ok { color: var(--ok); }
+  .log-line .lvl.warn { color: var(--warn); }
+
+  .heatmap {
+    display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px;
+    grid-template-rows: repeat(7, 16px);
+    grid-auto-flow: column;
+  }
+  .heatmap > i { display: block; border-radius: 2px; background: var(--bg-2); }
+</style>
+</head>
+<body>
+
+<div class="screen-head">
+  <div><div class="num">08 · admin</div><h1>Channels &amp; historical scan</h1></div>
+  <div class="desc">A read-only mirror of the guild's channel + category tree, used as both an inventory and as the scope picker for historical ingestion runs. Choose what to scan, in what range, and whether to recompute rewards.</div>
+  <div class="right"><a href="../index.html" class="back">← back</a></div>
+</div>
+
+<div class="canvas">
+
+<!-- v1: channels overview -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v1</span><span class="v-name">Channels overview · activity-by-channel</span></div>
+  <p class="variant-desc">Tree of categories → channels with per-channel ingest status, last sync, message + voice volume, and "include in rules" coverage. Click any channel to drop into an event-lake search filtered to it.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / channels</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item">Overview</a><a class="nav-item">Rules</a><a class="nav-item">Members</a><a class="nav-item active">Channels</a><a class="nav-item">Event lake</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / channels</span><span style="margin-left: auto;" class="dim">14 categories · 88 channels · 12 voice · 2 forum</span></div>
+        <div class="pg">
+          <div class="hstack" style="justify-content: space-between;">
+            <div><div class="page-title">Channels &amp; categories</div><div class="dim" style="font-size: 12.5px;">Read-only mirror of Discord. Sync runs every 60s; last full diff <span class="mono">26s ago</span>.</div></div>
+            <div class="hstack"><button class="btn ghost sm">↻ resync</button><a class="btn primary sm">→ run historical scan</a></div>
+          </div>
+
+          <div class="hstack" style="gap: 10px;">
+            <input class="input mono" placeholder="filter channels…" style="flex: 1;" />
+            <span class="tag">type · all</span><span class="tag">included only</span><span class="tag">14d activity</span>
+          </div>
+
+          <div class="cat-block">
+            <div class="cat-head"><span class="ic di"></span> ◆ welcome</div>
+            <div class="ch-row" style="grid-template-columns: 28px 1fr 100px 100px 100px 100px 110px;">
+              <span class="check on">✓</span><span><span class="ic-ch">#</span> <span class="name">welcome</span></span><span class="num">2 088</span><span class="num">—</span><span class="num">12 480</span><span class="dim mono" style="font-size: 11px;">incl. 2 rules</span><span class="dim mono" style="font-size: 11px; text-align: right;">2m ago</span>
+            </div>
+            <div class="ch-row excluded"><span class="check">·</span><span><span class="ic-ch">#</span> <span class="name">rules-and-info</span></span><span class="num">88</span><span class="num">—</span><span class="num">412</span><span class="dim mono" style="font-size: 11px;">excluded</span><span class="dim mono" style="font-size: 11px; text-align: right;">2m ago</span></div>
+          </div>
+
+          <div class="cat-block">
+            <div class="cat-head"><span class="ic di"></span> ◆ chat (8 channels) <span style="margin-left: auto;" class="dim mono">488k events · 14d</span></div>
+            <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">#</span> <span class="name">general</span></span><span class="num">12 488</span><span class="num">—</span><span class="num" style="color: var(--accent);">122 088</span><span class="dim mono" style="font-size: 11px;">incl. 12 rules</span><span class="dim mono" style="font-size: 11px; text-align: right;">2m ago</span></div>
+            <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">#</span> <span class="name">cs-talk</span></span><span class="num">8 088</span><span class="num">—</span><span class="num">88 412</span><span class="dim mono" style="font-size: 11px;">incl. 12 rules</span><span class="dim mono" style="font-size: 11px; text-align: right;">2m ago</span></div>
+            <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">#</span> <span class="name">help</span></span><span class="num">5 412</span><span class="num">—</span><span class="num">42 088</span><span class="dim mono" style="font-size: 11px;">incl. 18 rules</span><span class="dim mono" style="font-size: 11px; text-align: right;">2m ago</span></div>
+            <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">#</span> <span class="name">announcements</span></span><span class="num">2 088</span><span class="num">—</span><span class="num">17 488</span><span class="dim mono" style="font-size: 11px;">incl. 4 rules</span><span class="dim mono" style="font-size: 11px; text-align: right;">2m ago</span></div>
+            <div class="ch-row excluded"><span class="check">·</span><span><span class="ic-ch">#</span> <span class="name">bot-spam</span></span><span class="num">488</span><span class="num">—</span><span class="num">88 088</span><span class="dim mono" style="font-size: 11px;">excluded</span><span class="dim mono" style="font-size: 11px; text-align: right;">2m ago</span></div>
+            <div class="ch-row"><span class="check partial">▤</span><span><span class="ic-ch">#</span> <span class="name">memes</span></span><span class="num">988</span><span class="num">—</span><span class="num">22 412</span><span class="dim mono" style="font-size: 11px;">incl. 2 rules</span><span class="dim mono" style="font-size: 11px; text-align: right;">2m ago</span></div>
+          </div>
+
+          <div class="cat-block">
+            <div class="cat-head"><span class="ic di"></span> ◆ voice (4 channels) <span style="margin-left: auto;" class="dim mono">14k sessions · 14d · 2 open</span></div>
+            <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">▶</span> <span class="name">voice/study-room</span></span><span class="num">488</span><span class="num">412h</span><span class="num">14 088</span><span class="dim mono" style="font-size: 11px;">incl. 4 rules</span><span class="dim mono" style="font-size: 11px; text-align: right;">live · 2 in</span></div>
+            <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">▶</span> <span class="name">voice/games</span></span><span class="num">88</span><span class="num">88h</span><span class="num">2 488</span><span class="dim mono" style="font-size: 11px;">incl. 2 rules</span><span class="dim mono" style="font-size: 11px; text-align: right;">empty</span></div>
+            <div class="ch-row excluded"><span class="check">·</span><span><span class="ic-ch">▶</span> <span class="name">voice/staff-only</span></span><span class="num">12</span><span class="num">14h</span><span class="num">—</span><span class="dim mono" style="font-size: 11px;">excluded</span><span class="dim mono" style="font-size: 11px; text-align: right;">empty</span></div>
+            <div class="ch-row excluded"><span class="check">·</span><span><span class="ic-ch">▶</span> <span class="name">voice/afk</span></span><span class="num">—</span><span class="num">—</span><span class="num">—</span><span class="dim mono" style="font-size: 11px;">excluded</span><span class="dim mono" style="font-size: 11px; text-align: right;">—</span></div>
+          </div>
+
+          <div class="cat-block">
+            <div class="cat-head"><span class="ic di"></span> ◆ forum &amp; help</div>
+            <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">≡</span> <span class="name">forum/help</span></span><span class="num">488</span><span class="num">—</span><span class="num">14 088</span><span class="dim mono" style="font-size: 11px;">incl. 6 rules</span><span class="dim mono" style="font-size: 11px; text-align: right;">2m ago</span></div>
+            <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">≡</span> <span class="name">forum/projects</span></span><span class="num">88</span><span class="num">—</span><span class="num">4 412</span><span class="dim mono" style="font-size: 11px;">incl. 4 rules</span><span class="dim mono" style="font-size: 11px; text-align: right;">2m ago</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v2: scope picker -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v2</span><span class="v-name">Historical scan · scope picker (step 1 of 4)</span></div>
+  <p class="variant-desc">Pick channels and date range. Synapse estimates volume + rate-limited duration before you commit. Tri-state checkboxes propagate from category to children.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / scanner / new</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item">Overview</a><a class="nav-item active">Scanner</a><a class="nav-item">Rules</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / scanner / new run</span></div>
+        <div class="pg">
+          <div class="page-head"><div class="page-title">New historical scan</div><div class="page-desc">Synapse will read messages, reactions, voice events, and threads from the channels and date range you choose. Reward calculation is opt-in on step 3.</div></div>
+
+          <ol class="scan-stepper">
+            <li class="scan-step active"><span class="num">step 1 / 4</span><span class="ttl">Scope</span><span class="sub">channels + categories</span></li>
+            <li class="scan-step"><span class="num">step 2 / 4</span><span class="ttl">Date range</span><span class="sub">since / until</span></li>
+            <li class="scan-step"><span class="num">step 3 / 4</span><span class="ttl">Mode</span><span class="sub">ingest only · or · also evaluate rules</span></li>
+            <li class="scan-step"><span class="num">step 4 / 4</span><span class="ttl">Confirm</span><span class="sub">review + run</span></li>
+          </ol>
+
+          <div class="grid" style="grid-template-columns: 1.6fr 1fr;">
+            <div>
+              <div class="hstack" style="justify-content: space-between; margin-bottom: 10px;">
+                <div class="section-title">Pick channels</div>
+                <div class="hstack mono" style="font-size: 11px; color: var(--text-3);"><span>select all</span><span>·</span><span>none</span><span>·</span><span>follow rule scope</span></div>
+              </div>
+
+              <div class="cat-block">
+                <div class="cat-head" style="display: flex; gap: 10px;"><span class="check partial" style="display: inline-grid; width: 16px; height: 16px;">▤</span> ◆ chat <span style="margin-left: auto;" class="dim mono" style="font-size: 11px;">5 of 6 selected</span></div>
+                <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">#</span> general</span><span class="num">12 488</span><span class="num">—</span><span class="num">122k</span><span class="dim mono" style="font-size: 11px;">most active</span><span></span></div>
+                <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">#</span> cs-talk</span><span class="num">8 088</span><span class="num">—</span><span class="num">88k</span><span></span><span></span></div>
+                <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">#</span> help</span><span class="num">5 412</span><span class="num">—</span><span class="num">42k</span><span></span><span></span></div>
+                <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">#</span> announcements</span><span class="num">2 088</span><span class="num">—</span><span class="num">17k</span><span></span><span></span></div>
+                <div class="ch-row excluded"><span class="check">·</span><span><span class="ic-ch">#</span> bot-spam</span><span class="num">488</span><span class="num">—</span><span class="num">88k</span><span class="dim mono" style="font-size: 11px;">excluded</span><span></span></div>
+              </div>
+              <div class="cat-block">
+                <div class="cat-head"><span class="check on">✓</span> ◆ voice <span style="margin-left: auto;" class="dim mono">all 4 selected</span></div>
+                <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">▶</span> voice/study-room</span><span class="num">488</span><span class="num">412h</span><span class="num">14k</span><span></span><span></span></div>
+                <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">▶</span> voice/games</span><span class="num">88</span><span class="num">88h</span><span class="num">2.4k</span><span></span><span></span></div>
+              </div>
+              <div class="cat-block">
+                <div class="cat-head"><span class="check on">✓</span> ◆ forum &amp; help</div>
+                <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">≡</span> forum/help</span><span class="num">488</span><span class="num">—</span><span class="num">14k</span><span></span><span></span></div>
+                <div class="ch-row"><span class="check on">✓</span><span><span class="ic-ch">≡</span> forum/projects</span><span class="num">88</span><span class="num">—</span><span class="num">4.4k</span><span></span><span></span></div>
+              </div>
+            </div>
+
+            <div class="vstack" style="gap: 14px;">
+              <div class="card" style="padding: 16px 18px;">
+                <div class="section-title">Estimate</div>
+                <div class="vstack" style="margin-top: 12px;">
+                  <div class="hstack" style="justify-content: space-between;"><span class="dim">channels</span><span class="mono" style="font-size: 14px;">11 of 16</span></div>
+                  <div class="hstack" style="justify-content: space-between;"><span class="dim">est. messages</span><span class="mono" style="font-size: 14px;">~ 412 088</span></div>
+                  <div class="hstack" style="justify-content: space-between;"><span class="dim">est. reactions</span><span class="mono" style="font-size: 14px;">~ 88 412</span></div>
+                  <div class="hstack" style="justify-content: space-between;"><span class="dim">est. voice events</span><span class="mono" style="font-size: 14px;">~ 14 088</span></div>
+                  <div class="divider"></div>
+                  <div class="hstack" style="justify-content: space-between;"><span class="dim">est. duration</span><span class="mono" style="font-size: 14px;">2h 14m</span></div>
+                  <div class="hstack" style="justify-content: space-between;"><span class="dim">discord rate-limit ceiling</span><span class="mono" style="font-size: 14px; color: var(--warn);">50 req / s</span></div>
+                </div>
+              </div>
+              <div class="note">scoping cs-talk + general alone covers 73% of expected matches</div>
+              <div class="hstack" style="justify-content: space-between;"><button class="btn ghost">cancel</button><button class="btn primary">next: date range →</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v3: scan in-progress + log -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v3</span><span class="v-name">Historical scan · running (step 4 of 4)</span></div>
+  <p class="variant-desc">Live progress per channel, throttled-API status, and a streaming log. Pause + resume at any time. Reward eval mode is shown so you know whether currencies are actively moving.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / scanner / run-2026-05-09-a</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item active">Scanner</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / scanner /</span><span class="mono" style="color: var(--text);">run-2026-05-09-a</span><span class="tag live" style="margin-left: auto;">running · 1h 12m elapsed</span></div>
+        <div class="pg">
+          <div class="hstack" style="justify-content: space-between;">
+            <div><div class="page-title">Backfill · ingest + evaluate</div><div class="dim mono" style="font-size: 12px;">scope · 11 channels  ·  range · 2024-01-01 → 2026-05-09  ·  mode · ingest + evaluate rules</div></div>
+            <div class="hstack"><button class="btn ghost sm">⏸ pause</button><button class="btn ghost sm" style="color: var(--err);">cancel</button></div>
+          </div>
+
+          <div class="card" style="padding: 16px 18px;">
+            <div class="hstack" style="justify-content: space-between;"><div class="section-title" style="border: none;">Overall progress</div><span class="mono" style="font-size: 12px; color: var(--text-3);">62%  ·  est. 38m remaining</span></div>
+            <div class="scan-progress" style="margin-top: 10px;"><span style="width: 62%;"></span></div>
+            <div class="hstack" style="margin-top: 14px; gap: 22px;">
+              <div><div class="stat-label">events ingested</div><div class="stat-value">1 488 412</div></div>
+              <div><div class="stat-label">rule matches</div><div class="stat-value" style="color: var(--accent);">88 412</div></div>
+              <div><div class="stat-label">currency awarded</div><div class="stat-value mono" style="font-size: 18px;"><span style="color: var(--xp);">412k XP</span> · <span style="color: var(--coin);">88k ¢</span></div></div>
+              <div><div class="stat-label">api throttle</div><div class="stat-value mono" style="font-size: 18px; color: var(--warn);">42 / 50 r/s</div></div>
+            </div>
+          </div>
+
+          <div class="grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="card" style="padding: 0;">
+              <div style="padding: 12px 16px; border-bottom: 1px solid var(--line);" class="section-title">By channel</div>
+              <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+                <div class="bar-row"><span class="mono" style="width: 130px;">#general</span><div class="bar"><span style="width: 88%;"></span></div><span class="mono dim">110k / 122k</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">#cs-talk</span><div class="bar"><span style="width: 72%;"></span></div><span class="mono dim">63k / 88k</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">#help</span><div class="bar"><span style="width: 100%; background: var(--ok);"></span></div><span class="mono dim" style="color: var(--ok);">42k / 42k ✓</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">#announcements</span><div class="bar"><span style="width: 100%; background: var(--ok);"></span></div><span class="mono dim" style="color: var(--ok);">17k / 17k ✓</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">voice/study-room</span><div class="bar"><span style="width: 38%;"></span></div><span class="mono dim">5.2k / 14k</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">voice/games</span><div class="bar"><span style="width: 0%;"></span></div><span class="mono dim">queued</span></div>
+                <div class="bar-row"><span class="mono" style="width: 130px;">forum/help</span><div class="bar"><span style="width: 0%;"></span></div><span class="mono dim">queued</span></div>
+              </div>
+            </div>
+            <div class="card" style="padding: 0;">
+              <div style="padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex;" class="hstack"><div class="section-title" style="border: none;">Streaming log</div><span class="dim mono" style="font-size: 11px; margin-left: auto;">tail -f</span></div>
+              <div style="max-height: 260px; overflow: hidden;">
+                <div class="log-line"><span class="ts">15:14:02.408</span><span class="lvl ok">ingest</span><span>fetched batch · #cs-talk · 50 msgs · before=2025-08-12T14:08Z</span></div>
+                <div class="log-line"><span class="ts">15:14:02.122</span><span class="lvl ok">eval</span><span>rule helpful_reply matched · maria.cho · +30 XP +10 ¢</span></div>
+                <div class="log-line"><span class="ts">15:14:02.118</span><span class="lvl ok">eval</span><span>rule helpful_reply matched · dmitri.v · +30 XP +10 ¢</span></div>
+                <div class="log-line"><span class="ts">15:14:01.880</span><span class="lvl">eval</span><span>rule helpful_reply skipped · cooldown · jules.t · 38s</span></div>
+                <div class="log-line"><span class="ts">15:14:01.660</span><span class="lvl ok">ingest</span><span>fetched batch · #cs-talk · 50 msgs · before=2025-08-12T14:01Z</span></div>
+                <div class="log-line"><span class="ts">15:14:01.220</span><span class="lvl warn">api</span><span>discord 429 received · backoff 800ms · channel=#general</span></div>
+                <div class="log-line"><span class="ts">15:14:00.418</span><span class="lvl ok">ingest</span><span>fetched batch · #general · 50 msgs · before=2025-08-12T11:14Z</span></div>
+                <div class="log-line"><span class="ts">15:13:59.808</span><span class="lvl ok">eval</span><span>rule officer_kudos matched · ren.lin · +200 XP</span></div>
+                <div class="log-line"><span class="ts">15:13:59.602</span><span class="lvl ok">checkpoint</span><span>flushed · 2 488 events · #cs-talk @ 2025-08-12T13:00Z</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v4: scan history + activity heatmap -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v4</span><span class="v-name">Scan history + activity heatmap</span></div>
+  <p class="variant-desc">Lookback view of past scans with provenance for every event in the lake — answers "where did this row come from?" — alongside a hour-of-week heatmap to plan future runs at low-traffic windows.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / scanner</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item active">Scanner</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / scanner / history</span><span style="margin-left: auto;"><a class="btn primary sm">+ new run</a></span></div>
+        <div class="pg">
+          <div class="grid" style="grid-template-columns: 1.4fr 1fr;">
+            <div class="card" style="padding: 0;">
+              <div style="padding: 12px 16px; border-bottom: 1px solid var(--line);" class="section-title">Past runs</div>
+              <table class="tbl">
+                <tr><th>id</th><th>started</th><th>scope</th><th>range</th><th>mode</th><th>events</th><th>status</th></tr>
+                <tr><td class="mono">run-…-09-a</td><td class="mono">today 14:02</td><td>11 ch</td><td class="mono dim">2024-01-01 → 2026-05-09</td><td><span class="tag accent">ingest+eval</span></td><td class="mono">1.49M</td><td><span class="tag live">running</span></td></tr>
+                <tr><td class="mono">run-…-04-c</td><td class="mono">may 04 21:18</td><td>2 ch</td><td class="mono dim">2026-04-01 → 2026-05-04</td><td><span class="tag">ingest only</span></td><td class="mono">88 412</td><td><span class="tag" style="color: var(--ok);">complete</span></td></tr>
+                <tr><td class="mono">run-…-02-a</td><td class="mono">may 02 09:44</td><td>16 ch</td><td class="mono dim">2024-01-01 → 2026-05-02</td><td><span class="tag accent">ingest+eval</span></td><td class="mono">2.44M</td><td><span class="tag" style="color: var(--ok);">complete · used as baseline</span></td></tr>
+                <tr><td class="mono">run-…-01-b</td><td class="mono">may 01 23:01</td><td>4 ch</td><td class="mono dim">2026-04-15 → 2026-05-01</td><td><span class="tag">ingest only</span></td><td class="mono">412 088</td><td><span class="tag" style="color: var(--err);">failed · rate-limit</span></td></tr>
+                <tr><td class="mono">run-…-28-a</td><td class="mono">apr 28 11:22</td><td>2 ch</td><td class="mono dim">2026-04-13 → 2026-04-28</td><td><span class="tag accent">eval only</span></td><td class="mono">88 088</td><td><span class="tag" style="color: var(--ok);">complete</span></td></tr>
+                <tr><td class="mono">run-…-13-a</td><td class="mono">apr 13 00:01</td><td>16 ch</td><td class="mono dim">2024-01-01 → 2026-04-13</td><td><span class="tag accent">ingest+eval</span></td><td class="mono">2.18M</td><td><span class="tag" style="color: var(--ok);">complete · season open</span></td></tr>
+              </table>
+            </div>
+
+            <div class="card" style="padding: 18px 20px;">
+              <div class="section-title">Plan a run · activity heatmap</div>
+              <div class="dim" style="font-size: 12px; margin: 8px 0 14px;">Avg events / hour over last 14d. Lighter = lower traffic, better for backfill. Click a cell to schedule.</div>
+              <div class="heatmap" id="hm"></div>
+              <div class="hstack mono" style="font-size: 10.5px; color: var(--text-4); margin-top: 10px; gap: 6px;"><span>mon</span><span style="margin-left: auto;">low</span><i style="display: inline-block; width: 12px; height: 12px; background: var(--bg-2); border-radius: 2px;"></i><i style="width: 12px; height: 12px; display: inline-block; background: oklch(0.40 0.10 275 / 0.5); border-radius: 2px;"></i><i style="width: 12px; height: 12px; display: inline-block; background: var(--accent); border-radius: 2px;"></i><span>high</span></div>
+              <div class="divider" style="margin: 14px 0;"></div>
+              <div class="section-title">Quick run</div>
+              <div class="vstack" style="margin-top: 10px;">
+                <button class="btn sm ghost">↻ resync last 24h · #general only</button>
+                <button class="btn sm ghost">↻ re-evaluate season 4 · all rules</button>
+                <button class="btn sm ghost">↻ recompute leaderboard from baseline</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+  // populate heatmap with deterministic pseudo-random values
+  (function () {
+    var hm = document.getElementById('hm');
+    if (!hm) return;
+    function v(x, y) {
+      // peak weekday evenings
+      var t = Math.abs(Math.sin((x * 1.7 + y * 2.3))) * 0.6 + (x > 17 ? 0.4 : 0) + (y < 5 ? 0.2 : -0.1);
+      return Math.max(0.06, Math.min(0.92, t));
+    }
+    for (var x = 0; x < 24; x++) {
+      for (var y = 0; y < 7; y++) {
+        var w = v(x, y);
+        var i = document.createElement('i');
+        i.style.background = 'oklch(' + (0.20 + w * 0.45) + ' ' + (w * 0.18) + ' 275 / ' + (0.5 + w * 0.5) + ')';
+        hm.appendChild(i);
+      }
+    }
+  })();
+</script>
+</body></html>

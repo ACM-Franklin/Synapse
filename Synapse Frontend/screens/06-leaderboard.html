@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" /><title>06 · Leaderboard + seasons</title>
+<link rel="stylesheet" href="screen.css" />
+<style>
+  .variant-row { grid-template-columns: 1fr; }
+  .mini-shell { display: grid; grid-template-columns: 220px 1fr; min-height: 720px; }
+  .mini-shell .sb { border-right: 1px solid var(--line); background: var(--bg-1); padding: 14px 10px; display: flex; flex-direction: column; gap: 14px; font-size: 12.5px; }
+  .mini-shell .main { display: flex; flex-direction: column; }
+  .mini-shell .tb { padding: 10px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .mini-shell .pg { padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+
+  .lb-row {
+    display: grid; grid-template-columns: 50px 28px 1fr 100px 100px 100px 80px;
+    gap: 14px; padding: 12px 14px; align-items: center;
+    border-bottom: 1px dashed var(--line-soft);
+  }
+  .lb-row .rank { font-family: var(--mono); font-size: 18px; font-weight: 500; color: var(--text-2); text-align: right; font-feature-settings: "tnum"; }
+  .lb-row.top1 .rank { color: var(--coin); }
+  .lb-row.top2 .rank { color: oklch(0.78 0.02 270); }
+  .lb-row.top3 .rank { color: oklch(0.62 0.10 30); }
+  .lb-row .name { font-weight: 500; }
+  .lb-row .meta { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .lb-row .num { font-family: var(--mono); font-size: 14px; font-feature-settings: "tnum"; text-align: right; }
+  .lb-row .delta { font-family: var(--mono); font-size: 11px; color: var(--text-4); text-align: right; }
+  .lb-row .delta.up { color: var(--ok); }
+  .lb-row .delta.down { color: var(--err); }
+
+  .podium { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+  .podium-card { padding: 22px 18px; display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; position: relative; }
+  .podium-card .place { font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em; color: var(--text-3); text-transform: uppercase; }
+  .podium-card .name { font-size: 18px; font-weight: 500; }
+  .podium-card .score { font-family: var(--mono); font-size: 22px; font-feature-settings: "tnum"; }
+  .podium-card.p1 { background: linear-gradient(180deg, oklch(0.40 0.07 80 / 0.20), var(--bg-1)); border-color: oklch(0.50 0.10 80); }
+  .podium-card.p2 { transform: translateY(14px); }
+  .podium-card.p3 { transform: translateY(14px); }
+
+  .season-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 4px 10px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 999px; font-family: var(--mono); font-size: 11px;
+  }
+  .season-pill.active { color: var(--accent); border-color: var(--accent-dim); background: var(--accent-bg); }
+
+  .sn-card { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .sn-name { font-size: 17px; font-weight: 500; letter-spacing: -0.01em; }
+  .sn-dates { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .sn-stats { display: flex; gap: 18px; flex-wrap: wrap; padding-top: 8px; border-top: 1px dashed var(--line-soft); }
+  .sn-stat { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .sn-stat b { font-size: 16px; font-weight: 500; color: var(--text); display: block; font-feature-settings: "tnum"; margin-bottom: 2px; }
+
+  .timeline {
+    position: relative; padding: 24px 0 8px;
+  }
+  .timeline-axis {
+    position: absolute; left: 0; right: 0; top: 36px; height: 1px;
+    background: var(--line);
+  }
+  .timeline-track { display: flex; gap: 0; align-items: flex-start; padding-top: 0; }
+  .tl-season {
+    flex: 1; padding: 0 12px; display: flex; flex-direction: column; gap: 8px;
+    border-left: 1px dashed var(--line-soft); padding-bottom: 12px;
+  }
+  .tl-season:first-child { border-left: none; }
+  .tl-season .marker { width: 12px; height: 12px; background: var(--bg-3); border: 2px solid var(--bg-0); border-radius: 50%; margin-top: 30px; margin-left: -6px; position: relative; z-index: 2; }
+  .tl-season.live .marker { background: var(--live); box-shadow: 0 0 12px var(--live); }
+  .tl-season .label { font-family: var(--mono); font-size: 11px; color: var(--text-3); margin-top: 4px; }
+  .tl-season .name { font-weight: 500; font-size: 14px; }
+  .tl-season .winner { font-family: var(--mono); font-size: 11px; color: var(--coin); }
+</style>
+</head>
+<body>
+
+<div class="screen-head">
+  <div><div class="num">06 · member + admin</div><h1>Leaderboard &amp; seasons</h1></div>
+  <div class="desc">Per-season rankings with both gamified member-facing and forensic admin views. Seasons are first-class — they have schedules, metrics, and historical archives.</div>
+  <div class="right"><a href="../index.html" class="back">← back</a></div>
+</div>
+
+<div class="canvas">
+
+<!-- v1 — table-first leaderboard -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v1</span><span class="v-name">Member · classic table-first leaderboard</span></div>
+  <p class="variant-desc">Calm and dense. Season switcher, metric switcher (XP / coins / tokens / messages), week-over-week deltas, your row stuck to the bottom.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · m / leaderboard</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">you</div><a class="nav-item">Dashboard</a><a class="nav-item active">Leaderboard</a><a class="nav-item">Profile</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>m / leaderboard</span></div>
+        <div class="pg">
+          <div class="hstack" style="justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div class="hstack"><span class="season-pill active">● Season 4 · Spring '26</span><span class="season-pill">S3 · Winter '25</span><span class="season-pill">S2 · Autumn '25</span><span class="season-pill">all-time</span></div>
+            <div class="hstack"><span class="dim mono" style="font-size: 11px;">rank by</span><span class="tag accent">XP</span><span class="tag">coins</span><span class="tag">tokens</span><span class="tag">messages</span><span class="tag">voice min.</span></div>
+          </div>
+
+          <div class="card" style="padding: 0;">
+            <div class="lb-row" style="border-bottom: 1px solid var(--line); color: var(--text-3); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;">
+              <span style="text-align: right;">#</span><span></span><span>member</span><span style="text-align: right;">XP</span><span style="text-align: right;">coins</span><span style="text-align: right;">tokens</span><span style="text-align: right;">w/w</span>
+            </div>
+            <div class="lb-row top1"><span class="rank">1</span><span class="avatar h0">M</span><span><div class="name">@maria.cho</div><div class="meta">helpful_reply ×412 · forum_post ×88</div></span><span class="num" style="color: var(--xp);">21 480</span><span class="num" style="color: var(--coin);">8 412</span><span class="num" style="color: var(--token);">142</span><span class="delta up">+1 ↑</span></div>
+            <div class="lb-row top2"><span class="rank">2</span><span class="avatar h2">H</span><span><div class="name">@haskell.thebes</div><div class="meta">helpful_reply ×388 · voice 41h</div></span><span class="num" style="color: var(--xp);">19 802</span><span class="num" style="color: var(--coin);">7 188</span><span class="num" style="color: var(--token);">128</span><span class="delta down">-1 ↓</span></div>
+            <div class="lb-row top3"><span class="rank">3</span><span class="avatar h4">D</span><span><div class="name">@dmitri.v</div><div class="meta">forum_post ×120 · helpful_reply ×281</div></span><span class="num" style="color: var(--xp);">17 220</span><span class="num" style="color: var(--coin);">6 044</span><span class="num" style="color: var(--token);">112</span><span class="delta">—</span></div>
+            <div class="lb-row"><span class="rank">4</span><span class="avatar h3">P</span><span><div class="name">@priya.k</div><div class="meta">helpful_reply ×244</div></span><span class="num" style="color: var(--xp);">14 880</span><span class="num" style="color: var(--coin);">5 240</span><span class="num" style="color: var(--token);">98</span><span class="delta up">+2 ↑</span></div>
+            <div class="lb-row"><span class="rank">5</span><span class="avatar h5">R</span><span><div class="name">@ren.lin</div><div class="meta">voice_attendance 88h · helpful_reply ×112</div></span><span class="num" style="color: var(--xp);">12 412</span><span class="num" style="color: var(--coin);">4 088</span><span class="num" style="color: var(--token);">81</span><span class="delta down">-1 ↓</span></div>
+            <div class="lb-row"><span class="rank">6</span><span class="avatar h1">J</span><span><div class="name">@jules.t</div><div class="meta">voice_attendance 102h</div></span><span class="num" style="color: var(--xp);">11 044</span><span class="num" style="color: var(--coin);">3 902</span><span class="num" style="color: var(--token);">72</span><span class="delta down">-1 ↓</span></div>
+            <div class="lb-row"><span class="rank">7</span><span class="avatar h2">K</span><span><div class="name">@kai.h</div><div class="meta">forum_post ×42 · attachment ×84</div></span><span class="num" style="color: var(--xp);">9 814</span><span class="num" style="color: var(--coin);">3 240</span><span class="num" style="color: var(--token);">61</span><span class="delta up">+3 ↑</span></div>
+            <div class="lb-row"><span class="rank">8</span><span class="avatar h0">L</span><span><div class="name">@lena.r</div><div class="meta">helpful_reply ×148</div></span><span class="num" style="color: var(--xp);">9 211</span><span class="num" style="color: var(--coin);">2 988</span><span class="num" style="color: var(--token);">54</span><span class="delta">—</span></div>
+            <div class="lb-row"><span class="rank">9</span><span class="avatar h4">B</span><span><div class="name">@bo.x</div><div class="meta">helpful_reply ×112 · pin ×4</div></span><span class="num" style="color: var(--xp);">8 088</span><span class="num" style="color: var(--coin);">2 711</span><span class="num" style="color: var(--token);">42</span><span class="delta down">-2 ↓</span></div>
+            <div class="lb-row"><span class="rank">10</span><span class="avatar h3">S</span><span><div class="name">@sasha.b</div><div class="meta">reaction_thanks ×512</div></span><span class="num" style="color: var(--xp);">7 412</span><span class="num" style="color: var(--coin);">2 411</span><span class="num" style="color: var(--token);">38</span><span class="delta">—</span></div>
+            <div class="lb-row" style="background: var(--accent-bg); border-top: 1px solid var(--accent-dim);"><span class="rank" style="color: var(--accent);">14</span><span class="avatar h1">Y</span><span><div class="name">@you</div><div class="meta">helpful_reply ×88 · voice_attendance 22h</div></span><span class="num" style="color: var(--xp);">5 488</span><span class="num" style="color: var(--coin);">1 622</span><span class="num" style="color: var(--token);">28</span><span class="delta up">+2 ↑</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v2 — podium / gamified -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v2</span><span class="v-name">Member · podium &amp; momentum</span></div>
+  <p class="variant-desc">Slightly gamified. Top 3 podium, momentum sparkline, "your trajectory" subsection. Still grounded — no neon, no jewels.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · m / leaderboard</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">you</div><a class="nav-item">Dashboard</a><a class="nav-item active">Leaderboard</a><a class="nav-item">Profile</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>m / leaderboard</span></div>
+        <div class="pg">
+          <div class="hstack" style="justify-content: space-between;">
+            <div><div class="page-title">Spring '26</div><div class="dim mono" style="font-size: 11.5px;">season 4 · day 28 of 84 · ends jul 31</div></div>
+            <div class="hstack"><span class="tag accent">XP</span><span class="tag">coins</span><span class="tag">tokens</span></div>
+          </div>
+
+          <div class="podium">
+            <div class="card podium-card p2">
+              <span class="place">2nd</span>
+              <span class="avatar lg h2">H</span>
+              <div class="name">@haskell.thebes</div>
+              <div class="score" style="color: var(--xp);">19 802</div>
+              <div class="dim mono" style="font-size: 10.5px;">XP · season 4</div>
+            </div>
+            <div class="card podium-card p1">
+              <span class="place" style="color: var(--coin);">1st</span>
+              <span class="avatar lg h0">M</span>
+              <div class="name">@maria.cho</div>
+              <div class="score" style="color: var(--xp);">21 480</div>
+              <div class="dim mono" style="font-size: 10.5px;">XP · season 4 · 412 helpful replies</div>
+            </div>
+            <div class="card podium-card p3">
+              <span class="place">3rd</span>
+              <span class="avatar lg h4">D</span>
+              <div class="name">@dmitri.v</div>
+              <div class="score" style="color: var(--xp);">17 220</div>
+              <div class="dim mono" style="font-size: 10.5px;">XP · season 4</div>
+            </div>
+          </div>
+
+          <div class="card" style="padding: 18px 20px;">
+            <div class="hstack" style="justify-content: space-between;"><div class="section-title" style="border: none;">Your trajectory</div><span class="tag accent">rank 14 · ↑2 this week</span></div>
+            <div class="hstack" style="margin-top: 12px; gap: 22px;">
+              <div><div class="stat-label">XP this season</div><div class="stat-value" style="color: var(--xp);">5 488</div><div class="stat-delta up">+412 this wk</div></div>
+              <div><div class="stat-label">to next rank</div><div class="stat-value">412</div><div class="stat-delta">XP behind @yoshi.l</div></div>
+              <div style="flex: 1;">
+                <div class="stat-label" style="margin-bottom: 8px;">XP / day · last 14d</div>
+                <svg viewBox="0 0 400 60" preserveAspectRatio="none" style="width: 100%; height: 60px;">
+                  <path d="M0,50 L30,42 L60,46 L90,30 L120,28 L150,18 L180,22 L210,12 L240,16 L270,8 L300,18 L330,10 L360,4 L390,12" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+                  <line x1="0" y1="50" x2="400" y2="50" stroke="var(--line-soft)" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="padding: 0;">
+            <div class="lb-row" style="border-bottom: 1px solid var(--line); color: var(--text-3); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;">
+              <span style="text-align: right;">#</span><span></span><span>member</span><span style="text-align: right;">XP</span><span style="text-align: right;">coins</span><span style="text-align: right;">tokens</span><span style="text-align: right;">w/w</span>
+            </div>
+            <div class="lb-row"><span class="rank">4</span><span class="avatar h3">P</span><span><div class="name">@priya.k</div></span><span class="num" style="color: var(--xp);">14 880</span><span class="num" style="color: var(--coin);">5 240</span><span class="num" style="color: var(--token);">98</span><span class="delta up">+2 ↑</span></div>
+            <div class="lb-row"><span class="rank">5</span><span class="avatar h5">R</span><span><div class="name">@ren.lin</div></span><span class="num" style="color: var(--xp);">12 412</span><span class="num" style="color: var(--coin);">4 088</span><span class="num" style="color: var(--token);">81</span><span class="delta down">-1 ↓</span></div>
+            <div class="lb-row"><span class="rank">6</span><span class="avatar h1">J</span><span><div class="name">@jules.t</div></span><span class="num" style="color: var(--xp);">11 044</span><span class="num" style="color: var(--coin);">3 902</span><span class="num" style="color: var(--token);">72</span><span class="delta down">-1 ↓</span></div>
+            <div class="lb-row" style="background: var(--accent-bg);"><span class="rank" style="color: var(--accent);">14</span><span class="avatar h1">Y</span><span><div class="name">@you</div></span><span class="num" style="color: var(--xp);">5 488</span><span class="num" style="color: var(--coin);">1 622</span><span class="num" style="color: var(--token);">28</span><span class="delta up">+2 ↑</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v3 — admin season management -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v3</span><span class="v-name">Admin · seasons management</span></div>
+  <p class="variant-desc">Schedule, edit, archive, and audit seasons. Each season is its own rule scope, currency snapshot, and announcement context. Mid-season metric changes are blocked unless you fork.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse · admin / seasons</div></div>
+    <div class="mini-shell">
+      <aside class="sb"><div class="brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div></div></div>
+        <div class="nav-group"><div class="nav-label">admin</div><a class="nav-item">Overview</a><a class="nav-item">Rules</a><a class="nav-item active">Seasons</a><a class="nav-item">Members</a></div></aside>
+      <div class="main">
+        <div class="tb"><span>admin / seasons</span></div>
+        <div class="pg">
+          <div class="hstack" style="justify-content: space-between;">
+            <div><div class="page-title">Seasons</div><div class="dim mono" style="font-size: 11.5px;">4 total · 1 live · 0 scheduled · 3 archived</div></div>
+            <button class="btn primary">+ schedule season</button>
+          </div>
+
+          <div class="timeline">
+            <div class="timeline-axis"></div>
+            <div class="timeline-track">
+              <div class="tl-season"><div class="marker"></div><div class="label">jul 12 — oct 12 ·  '25</div><div class="name">Autumn '25</div><div class="winner">winner @ksenia.m</div></div>
+              <div class="tl-season"><div class="marker"></div><div class="label">oct 13 — jan 12 · '25</div><div class="name">Winter '25</div><div class="winner">winner @haskell.thebes</div></div>
+              <div class="tl-season"><div class="marker"></div><div class="label">jan 13 — apr 12 · '26</div><div class="name">Spring opening</div><div class="winner">winner @maria.cho</div></div>
+              <div class="tl-season live"><div class="marker"></div><div class="label">apr 13 — jul 31 · '26 · LIVE</div><div class="name">Spring '26</div><div class="winner">currently @maria.cho</div></div>
+              <div class="tl-season"><div class="marker" style="background: transparent; border: 2px dashed var(--line); box-shadow: none;"></div><div class="label">aug 1 — oct 31 · '26 · draft</div><div class="name">Summer '26</div><div class="dim mono" style="font-size: 11px;">unscheduled</div></div>
+            </div>
+          </div>
+
+          <div class="grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="card sn-card" style="border-color: var(--accent-dim);">
+              <div class="hstack" style="justify-content: space-between;"><div class="sn-name">Spring '26</div><span class="tag live">live · day 28 / 84</span></div>
+              <div class="sn-dates">apr 13 — jul 31 · '26  ·  utc</div>
+              <div class="dim" style="font-size: 12.5px;">Primary metric: XP. Tied breakers: helpful_reply count, then voice_attendance hours. 18 active rules.</div>
+              <div class="sn-stats"><div class="sn-stat">members<b>1 088</b></div><div class="sn-stat">events scored<b>412 008</b></div><div class="sn-stat">XP awarded<b>1.21M</b></div><div class="sn-stat">coins<b>412k</b></div></div>
+              <div class="hstack" style="margin-top: 4px;"><button class="btn sm ghost">edit metadata</button><button class="btn sm ghost">view audit log</button><button class="btn sm" style="color: var(--err);">end early…</button></div>
+            </div>
+            <div class="card sn-card">
+              <div class="hstack" style="justify-content: space-between;"><div class="sn-name">Summer '26</div><span class="tag">draft</span></div>
+              <div class="sn-dates">aug 1 — oct 31 · '26  ·  unscheduled</div>
+              <div class="dim" style="font-size: 12.5px;">Inherits rules from Spring '26. Add new "summer_quest_complete" outcome before publish.</div>
+              <div class="sn-stats"><div class="sn-stat">duration<b>92d</b></div><div class="sn-stat">inherited rules<b>16</b></div><div class="sn-stat">draft rules<b>4</b></div></div>
+              <div class="hstack" style="margin-top: 4px;"><button class="btn sm">configure</button><button class="btn sm ghost">duplicate</button><button class="btn sm ghost">delete</button></div>
+            </div>
+            <div class="card sn-card" style="opacity: 0.7;">
+              <div class="hstack" style="justify-content: space-between;"><div class="sn-name">Spring opening</div><span class="tag">archived</span></div>
+              <div class="sn-dates">jan 13 — apr 12 · '26</div>
+              <div class="sn-stats"><div class="sn-stat">winner<b style="color: var(--coin);">@maria.cho</b></div><div class="sn-stat">members<b>902</b></div><div class="sn-stat">events<b>312 488</b></div></div>
+              <div class="hstack" style="margin-top: 4px;"><button class="btn sm ghost">view archive</button><button class="btn sm ghost">restore for compare</button></div>
+            </div>
+            <div class="card sn-card" style="opacity: 0.7;">
+              <div class="hstack" style="justify-content: space-between;"><div class="sn-name">Winter '25</div><span class="tag">archived</span></div>
+              <div class="sn-dates">oct 13 — jan 12 · '25</div>
+              <div class="sn-stats"><div class="sn-stat">winner<b style="color: var(--coin);">@haskell.thebes</b></div><div class="sn-stat">members<b>740</b></div><div class="sn-stat">events<b>241 088</b></div></div>
+              <div class="hstack" style="margin-top: 4px;"><button class="btn sm ghost">view archive</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v4 — public unauth leaderboard -->
+<div class="variant">
+  <div class="variant-head"><span class="v-num">v4</span><span class="v-name">Public · optional unauthenticated leaderboard</span></div>
+  <p class="variant-desc">For the variant where the leaderboard is reachable without sign-in (per the docs ambiguity). No identity, no actions, no private data — just rank, display name, season totals.</p>
+  <div class="artboard"><div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">community.example.com / synapse / leaderboard</div></div>
+    <div style="display: flex; flex-direction: column; min-height: 720px;">
+      <div style="padding: 18px 32px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; background: var(--bg-1);">
+        <div class="brand-mark" style="width: 22px; height: 22px;"></div>
+        <div style="font-weight: 600;">Synapse · ACM Franklin community</div>
+        <span class="tag" style="margin-left: auto;">read-only · public view</span>
+        <a class="btn primary sm" href="#">Sign in with Discord →</a>
+      </div>
+      <div style="padding: 32px; display: flex; flex-direction: column; gap: 22px; max-width: 920px; margin: 0 auto; width: 100%;">
+        <div>
+          <div style="font-family: var(--mono); font-size: 11px; color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase;">Season 4 · Spring '26</div>
+          <h1 style="font-size: 40px; font-weight: 600; letter-spacing: -0.02em; margin: 6px 0 0;">Community leaderboard</h1>
+          <div class="dim" style="font-size: 14px; max-width: 540px; margin-top: 6px;">Rankings are derived from rule outcomes on observed Discord activity. Sign in to see your own stats and reward trace.</div>
+        </div>
+
+        <div class="hstack" style="gap: 22px;">
+          <div><div class="stat-label">members ranked</div><div class="stat-value">1 088</div></div>
+          <div><div class="stat-label">events scored this season</div><div class="stat-value">412k</div></div>
+          <div><div class="stat-label">days remaining</div><div class="stat-value">56</div></div>
+        </div>
+
+        <div class="card" style="padding: 0;">
+          <div class="lb-row" style="border-bottom: 1px solid var(--line); color: var(--text-3); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; grid-template-columns: 50px 28px 1fr 100px 120px;">
+            <span style="text-align: right;">#</span><span></span><span>member</span><span style="text-align: right;">XP</span><span style="text-align: right;">primary contribution</span>
+          </div>
+          <div class="lb-row top1" style="grid-template-columns: 50px 28px 1fr 100px 120px;"><span class="rank">1</span><span class="avatar h0">M</span><span><div class="name">@maria.cho</div></span><span class="num" style="color: var(--xp);">21 480</span><span class="dim mono" style="font-size: 11px; text-align: right;">helpful_reply ×412</span></div>
+          <div class="lb-row top2" style="grid-template-columns: 50px 28px 1fr 100px 120px;"><span class="rank">2</span><span class="avatar h2">H</span><span><div class="name">@haskell.thebes</div></span><span class="num" style="color: var(--xp);">19 802</span><span class="dim mono" style="font-size: 11px; text-align: right;">helpful_reply ×388</span></div>
+          <div class="lb-row top3" style="grid-template-columns: 50px 28px 1fr 100px 120px;"><span class="rank">3</span><span class="avatar h4">D</span><span><div class="name">@dmitri.v</div></span><span class="num" style="color: var(--xp);">17 220</span><span class="dim mono" style="font-size: 11px; text-align: right;">forum_post ×120</span></div>
+          <div class="lb-row" style="grid-template-columns: 50px 28px 1fr 100px 120px;"><span class="rank">4</span><span class="avatar h3">P</span><span><div class="name">@priya.k</div></span><span class="num" style="color: var(--xp);">14 880</span><span class="dim mono" style="font-size: 11px; text-align: right;">helpful_reply ×244</span></div>
+          <div class="lb-row" style="grid-template-columns: 50px 28px 1fr 100px 120px;"><span class="rank">5</span><span class="avatar h5">R</span><span><div class="name">@ren.lin</div></span><span class="num" style="color: var(--xp);">12 412</span><span class="dim mono" style="font-size: 11px; text-align: right;">voice_attendance 88h</span></div>
+          <div class="lb-row" style="grid-template-columns: 50px 28px 1fr 100px 120px;"><span class="rank">6</span><span class="avatar h1">J</span><span><div class="name">@jules.t</div></span><span class="num" style="color: var(--xp);">11 044</span><span class="dim mono" style="font-size: 11px; text-align: right;">voice_attendance 102h</span></div>
+        </div>
+
+        <div class="note" style="border-left-style: dashed;">DESIGN NOTE — public route. Display names only, no avatars beyond initials, no per-rule traces, no admin links. Sign-in CTA is in the top bar and after rank 10. Toggle is in admin/settings → public_leaderboard_enabled.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body></html>
