@@ -1,19 +1,19 @@
 package edu.franklin.acm.synapse.api.resource;
 
+import java.time.Instant;
+import java.util.Map;
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
-import java.time.Instant;
-import java.util.Map;
-import java.util.Set;
-
-import org.junit.jupiter.api.Test;
 
 import edu.franklin.acm.synapse.api.auth.AuthConfig;
 import edu.franklin.acm.synapse.api.auth.AuthService;
@@ -32,8 +32,9 @@ class AuthResourceTest {
     @Test
     void loginIssuesStateCookieAndBuildsAuthorizeUrlWithGeneratedState() {
         AuthService authService = mock(AuthService.class);
-        when(authService.buildAuthorizeUrl(anyString())).thenAnswer(invocation ->
-                "https://discord.example/auth?state=" + invocation.getArgument(0));
+        when(authService.buildAuthorizeUrl(anyString(), anyString())).thenAnswer(invocation ->
+            "https://discord.example/auth?state=" + invocation.getArgument(0)
+                + "&code_challenge=" + invocation.getArgument(1));
         AuthResource resource = resource(authService, new OAuthStateStore(300L));
 
         Response response = resource.login();
@@ -43,6 +44,7 @@ class AuthResourceTest {
         assertEquals(200, response.getStatus());
         assertTrue(stateCookie.isHttpOnly());
         assertTrue(body.authorizeUrl().contains("state=" + stateCookie.getValue()));
+        assertTrue(body.authorizeUrl().contains("code_challenge="));
     }
 
     @Test
@@ -56,7 +58,7 @@ class AuthResourceTest {
                 () -> resource.callback("code", state.value(), headers("wrong-state")));
 
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), ex.getResponse().getStatus());
-        verify(authService, never()).completeLogin(anyString());
+        verify(authService, never()).completeLogin(anyString(), anyString());
     }
 
     @Test
@@ -64,7 +66,7 @@ class AuthResourceTest {
         AuthService authService = mock(AuthService.class);
         OAuthStateStore stateStore = new OAuthStateStore(300L);
         OAuthStateStore.OAuthState state = stateStore.issue();
-        when(authService.completeLogin("code")).thenReturn(session());
+        when(authService.completeLogin("code", state.codeVerifier())).thenReturn(session());
         AuthResource resource = resource(authService, stateStore);
 
         Response response = resource.callback("code", state.value(), headers(state.value()));
@@ -72,6 +74,7 @@ class AuthResourceTest {
         assertEquals(303, response.getStatus());
         assertEquals("sid", response.getCookies().get("synapse_session").getValue());
         assertEquals(0, response.getCookies().get("synapse_oauth_state").getMaxAge());
+        verify(authService).completeLogin(eq("code"), eq(state.codeVerifier()));
         WebApplicationException reused = assertThrows(WebApplicationException.class,
             () -> resource.callback("code", state.value(), headers(state.value())));
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), reused.getResponse().getStatus());

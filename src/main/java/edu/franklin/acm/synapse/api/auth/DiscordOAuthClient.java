@@ -41,7 +41,7 @@ public class DiscordOAuthClient {
                 .build();
     }
 
-    public String buildAuthorizeUrl(String state) {
+    public String buildAuthorizeUrl(String state, String codeChallenge) {
         String scope = URLEncoder.encode("identify guilds guilds.members.read", StandardCharsets.UTF_8);
         return config.authorizeUrl()
                 + "?response_type=code"
@@ -49,6 +49,8 @@ public class DiscordOAuthClient {
                 + "&scope=" + scope
                 + "&redirect_uri=" + URLEncoder.encode(config.redirectUri(), StandardCharsets.UTF_8)
                 + "&prompt=none"
+                + (codeChallenge == null ? "" : "&code_challenge=" + URLEncoder.encode(codeChallenge, StandardCharsets.UTF_8))
+                + (codeChallenge == null ? "" : "&code_challenge_method=S256")
                 + (state == null ? "" : "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8));
     }
 
@@ -57,12 +59,13 @@ public class DiscordOAuthClient {
      *
      * @throws DiscordAuthException if Discord rejects the code or returns a non-2xx response
      */
-    public String exchangeCodeForAccessToken(String code) {
+    public String exchangeCodeForAccessToken(String code, String codeVerifier) {
         String body = "grant_type=authorization_code"
                 + "&code=" + URLEncoder.encode(code, StandardCharsets.UTF_8)
                 + "&redirect_uri=" + URLEncoder.encode(config.redirectUri(), StandardCharsets.UTF_8)
                 + "&client_id=" + URLEncoder.encode(config.clientId(), StandardCharsets.UTF_8)
-                + "&client_secret=" + URLEncoder.encode(config.clientSecret(), StandardCharsets.UTF_8);
+                + "&client_secret=" + URLEncoder.encode(config.clientSecret(), StandardCharsets.UTF_8)
+                + (codeVerifier == null ? "" : "&code_verifier=" + URLEncoder.encode(codeVerifier, StandardCharsets.UTF_8));
 
         HttpRequest req = HttpRequest.newBuilder(URI.create(config.tokenUrl()))
                 .header("Content-Type", "application/x-www-form-urlencoded")

@@ -20,13 +20,13 @@ public class AuthService {
     @Inject DiscordOAuthClient discord;
     @Inject SessionStore sessions;
 
-    public String buildAuthorizeUrl(String state) {
+    public String buildAuthorizeUrl(String state, String codeChallenge) {
         if (!config.isOauthConfigured()) {
             throw new WebApplicationException(
                     "Discord OAuth is not configured on this server.",
                     Response.Status.SERVICE_UNAVAILABLE);
         }
-        return discord.buildAuthorizeUrl(state);
+        return discord.buildAuthorizeUrl(state, codeChallenge);
     }
 
     /**
@@ -36,14 +36,14 @@ public class AuthService {
      * @throws WebApplicationException 401 if the user is not a guild member,
      *         403 if the account is a bot, 503 if OAuth is not configured.
      */
-    public UserSession completeLogin(String code) {
+    public UserSession completeLogin(String code, String codeVerifier) {
         if (!config.isOauthConfigured()) {
             throw new WebApplicationException(
                     "Discord OAuth is not configured on this server.",
                     Response.Status.SERVICE_UNAVAILABLE);
         }
 
-        String accessToken = discord.exchangeCodeForAccessToken(code);
+        String accessToken = discord.exchangeCodeForAccessToken(code, codeVerifier);
         DiscordOAuthClient.DiscordUser user = discord.fetchIdentity(accessToken);
 
         if (user.bot()) {

@@ -1,17 +1,18 @@
 package edu.franklin.acm.synapse.api.auth;
 
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
-
-import java.util.Set;
-
-import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
@@ -26,12 +27,12 @@ class AuthServiceTest {
         AuthService service = serviceWith(adminRoles());
         DiscordOAuthClient client = service.discord;
 
-        when(client.exchangeCodeForAccessToken(anyString())).thenReturn("tok");
+        when(client.exchangeCodeForAccessToken(anyString(), anyString())).thenReturn("tok");
         when(client.fetchIdentity(anyString())).thenReturn(
                 new DiscordOAuthClient.DiscordUser(1L, "botboy", null, null, true));
 
         WebApplicationException ex = assertThrows(WebApplicationException.class,
-                () -> service.completeLogin("code"));
+                () -> service.completeLogin("code", "verifier"));
         assertEquals(Response.Status.FORBIDDEN.getStatusCode(), ex.getResponse().getStatus());
     }
 
@@ -40,13 +41,13 @@ class AuthServiceTest {
         AuthService service = serviceWith(adminRoles());
         DiscordOAuthClient client = service.discord;
 
-        when(client.exchangeCodeForAccessToken(anyString())).thenReturn("tok");
+        when(client.exchangeCodeForAccessToken(anyString(), anyString())).thenReturn("tok");
         when(client.fetchIdentity(anyString())).thenReturn(
                 new DiscordOAuthClient.DiscordUser(1L, "outsider", null, null, false));
         when(client.fetchGuildMember(anyString(), anyLong())).thenReturn(null);
 
         WebApplicationException ex = assertThrows(WebApplicationException.class,
-                () -> service.completeLogin("code"));
+                () -> service.completeLogin("code", "verifier"));
         assertEquals(Response.Status.FORBIDDEN.getStatusCode(), ex.getResponse().getStatus());
     }
 
@@ -55,16 +56,17 @@ class AuthServiceTest {
         AuthService service = serviceWith(adminRoles());
         DiscordOAuthClient client = service.discord;
 
-        when(client.exchangeCodeForAccessToken(anyString())).thenReturn("tok");
+        when(client.exchangeCodeForAccessToken(anyString(), anyString())).thenReturn("tok");
         when(client.fetchIdentity(anyString())).thenReturn(
                 new DiscordOAuthClient.DiscordUser(7L, "admin-alice", "Alice", "hash", false));
         when(client.fetchGuildMember(anyString(), anyLong())).thenReturn(
                 new DiscordOAuthClient.DiscordGuildMember("nick", Set.of(ADMIN_ROLE, 999L)));
 
-        UserSession session = service.completeLogin("code");
+        UserSession session = service.completeLogin("code", "verifier");
         assertTrue(session.isAdmin());
         assertEquals(7L, session.userExtId());
         assertTrue(session.roleExtIds().contains(ADMIN_ROLE));
+        verify(client).exchangeCodeForAccessToken(eq("code"), eq("verifier"));
     }
 
     @Test
@@ -72,13 +74,13 @@ class AuthServiceTest {
         AuthService service = serviceWith(adminRoles());
         DiscordOAuthClient client = service.discord;
 
-        when(client.exchangeCodeForAccessToken(anyString())).thenReturn("tok");
+        when(client.exchangeCodeForAccessToken(anyString(), anyString())).thenReturn("tok");
         when(client.fetchIdentity(anyString())).thenReturn(
                 new DiscordOAuthClient.DiscordUser(8L, "plain-bob", null, null, false));
         when(client.fetchGuildMember(anyString(), anyLong())).thenReturn(
                 new DiscordOAuthClient.DiscordGuildMember(null, Set.of(123L)));
 
-        UserSession session = service.completeLogin("code");
+        UserSession session = service.completeLogin("code", "verifier");
         assertFalse(session.isAdmin());
         assertEquals(8L, session.userExtId());
     }
@@ -87,7 +89,7 @@ class AuthServiceTest {
     void completeLoginFailsWhenOauthNotConfigured() {
         AuthService service = serviceWith(adminRoles(), false, GUILD_ID);
         WebApplicationException ex = assertThrows(WebApplicationException.class,
-                () -> service.completeLogin("code"));
+                () -> service.completeLogin("code", "verifier"));
         assertEquals(Response.Status.SERVICE_UNAVAILABLE.getStatusCode(), ex.getResponse().getStatus());
     }
 
@@ -95,12 +97,12 @@ class AuthServiceTest {
     void completeLoginFailsWhenGuildIdNotConfigured() {
         AuthService service = serviceWith(adminRoles(), true, 0L);
         DiscordOAuthClient client = service.discord;
-        when(client.exchangeCodeForAccessToken(anyString())).thenReturn("tok");
+        when(client.exchangeCodeForAccessToken(anyString(), anyString())).thenReturn("tok");
         when(client.fetchIdentity(anyString())).thenReturn(
                 new DiscordOAuthClient.DiscordUser(1L, "u", null, null, false));
 
         WebApplicationException ex = assertThrows(WebApplicationException.class,
-                () -> service.completeLogin("code"));
+                () -> service.completeLogin("code", "verifier"));
         assertEquals(Response.Status.SERVICE_UNAVAILABLE.getStatusCode(), ex.getResponse().getStatus());
     }
 

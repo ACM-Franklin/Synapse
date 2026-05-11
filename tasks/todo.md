@@ -1,24 +1,26 @@
-# Current Task: Phase 7+8 Hardening Before Frontend
+# Current Task: OAuth PKCE And Session Hardening
 
 ## Goal
 
-Close the concrete backend risks found after the first API/auth slice so the
-frontend is not built on obvious security and operations debt.
+Apply the useful parts of the security review without turning Synapse into an
+enterprise auth hairball. Keep the v1 single-instance model, but close protocol
+gaps that are cheap and real.
 
 ## Plan
 
-- [x] Add OAuth state issuance, storage, callback validation, and single-use expiry.
-- [x] Move bulk message replay behind persisted async jobs with a single-running-job guard and status endpoint.
-- [x] Add leaderboard indexes through schema and migration.
-- [x] Return a pending dashboard DTO for authenticated guild members not yet reconciled into `members`.
-- [x] Validate rule `event_type` against the known event types Synapse can evaluate.
-- [x] Lock down production Quarkus non-application surfaces and document the cookie deployment topology.
-- [x] Add a small in-memory API rate limiter for OAuth, admin mutation, and ordinary API routes.
-- [x] Update risk/docs/endpoint inventory and run focused plus full validation.
+- [x] Add PKCE `code_verifier` / S256 `code_challenge` to the Discord OAuth flow.
+- [x] Compare returned OAuth state and cookie state with timing-safe equality.
+- [x] Bound the transient OAuth state store so login spam cannot grow memory forever.
+- [x] Add production reverse-proxy and CORS hardening config for the same-host deployment model.
+- [x] Update tests and docs, then run focused and full validation.
 
 ## Review
 
-- Working from `local_docs/BACKEND_OPEN_RISKS.md`; Tier 1 items are security/ops blockers, not polish.
-- Keep the slice narrow: no rule mutation, no guest mode, no new frontend UX, no deployment ceremony.
-- Focused hardening tests, full test suite, diagnostics, and `git diff --check` pass.
-- Phase is ready to preserve in git with the validated hardening slice.
+- Review item rejected for now: replacing the in-process session store with
+	stateless encrypted cookies is not part of MVP hardening. It changes auth
+	architecture and revocation semantics; the current TTL-bounded session map is
+	deliberately simple for a single-instance bot.
+- Review item deferred: a reactive, header-aware Discord 429 retry client is not
+	necessary until real traffic proves the current local rate limiter is
+	insufficient.
+- Focused auth tests, full test suite, diagnostics, and `git diff --check` pass.

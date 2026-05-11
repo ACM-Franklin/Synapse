@@ -57,6 +57,7 @@ Set these environment variables (or add them to a `.env` file in the project roo
 | `SYNAPSE_SESSION_TTL_SECONDS`     | No               | `86400`                                       | Session lifetime in seconds                                          |
 | `SYNAPSE_SESSION_COOKIE_SECURE`   | No               | `false` (dev) / `true` (`%prod` profile)      | Mark the session cookie `Secure` (HTTPS-only)                        |
 | `SYNAPSE_OAUTH_STATE_TTL_SECONDS` | No               | `300`                                         | OAuth state lifetime in seconds                                      |
+| `SYNAPSE_OAUTH_STATE_MAX_ACTIVE`  | No               | `4096`                                        | Maximum active OAuth login states before oldest entries are evicted  |
 | `SYNAPSE_API_RATE_LIMIT_ENABLED`  | No               | `true`                                        | Enable in-memory API rate limiting                                   |
 | `SYNAPSE_API_RATE_LIMIT_WINDOW_SECONDS` | No          | `60`                                          | Rate-limit window length                                             |
 | `SYNAPSE_API_RATE_LIMIT_DEFAULT_REQUESTS` | No        | `120`                                         | Requests per client/route/window for normal API routes               |
@@ -146,10 +147,15 @@ The bot exposes an HTTP API on port 8080. The canonical inventory of routes live
 - `GET /api/health` is the only public endpoint.
 - Member-facing reads require an authenticated Discord guild member.
 - Admin endpoints additionally require membership in one of the role IDs listed in `SYNAPSE_ADMIN_ROLE_IDS`.
-- OAuth login uses a short-lived state cookie to protect the callback.
+- OAuth login uses a short-lived state cookie plus PKCE to protect the callback and token exchange.
 - API routes have a small in-memory rate limiter; OAuth and expensive admin mutation routes are capped more tightly than ordinary reads.
 - Destructive admin actions (`POST /api/scans/historical`, `POST /api/admin/replay/messages`) require an explicit `confirm` value in the JSON body.
 - Message reward replay is queued as a persisted async job. Poll `GET /api/admin/replay/messages/{jobId}` for status.
+
+Production assumes a same-host reverse proxy for the frontend and `/api/*`.
+The `%prod` profile disables Quarkus CORS and enables trusted forwarded-header
+handling so TLS-terminating proxies can preserve secure-cookie behavior. Do not
+expose the Quarkus port directly to the internet with forwarded headers enabled.
 
 ---
 

@@ -16,12 +16,12 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.Cookie;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.HttpHeaders;
-import jakarta.ws.rs.core.Cookie;
-import jakarta.ws.rs.core.Context;
 
 @Path("/api/auth")
 @Produces(MediaType.APPLICATION_JSON)
@@ -42,7 +42,7 @@ public class AuthResource {
     @Path("/login")
     public Response login() {
         OAuthStateStore.OAuthState state = oauthStates.issue();
-        String url = authService.buildAuthorizeUrl(state.value());
+        String url = authService.buildAuthorizeUrl(state.value(), state.codeChallenge());
         return Response.ok(new LoginResponse(url))
                 .cookie(stateCookie(state.value(), (int) config.oauthStateTtlSeconds()))
                 .build();
@@ -63,11 +63,12 @@ public class AuthResource {
         String cookieState = cookieValue(headers, config.oauthStateCookieName());
         if (state == null || state.isBlank()
                 || cookieState == null
-                || !state.equals(cookieState)
-                || !oauthStates.consume(state)) {
+            || !OAuthStateStore.timingSafeEquals(cookieState, state)) {
             throw new WebApplicationException("Invalid OAuth state", Response.Status.BAD_REQUEST);
         }
-        UserSession session = authService.completeLogin(code);
+        OAuthStateStore.OAuthState consumedState = oauthStates.consume(state)
+            .orElseThrow(() -> new WebApplicationException("Invalid OAuth state", Response.Status.BAD_REQUEST));
+        UserSession session = authService.completeLogin(code, consumedState.codeVerifier());
         NewCookie cookie = sessionCookie(session.sessionId(), (int) config.sessionTtlSeconds());
         return Response.seeOther(URI.create(config.frontendRedirectUri()))
                 .cookie(cookie)
