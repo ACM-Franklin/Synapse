@@ -153,11 +153,40 @@ public class SynapseBot {
 
     /**
      * Retrieves the bot's latency to Discord's gateway.
-     * 
+     *
      * @return the gateway ping in milliseconds, or -1 if the connection is not ready
      */
     public long ping() {
         if (jda == null) return -1;
         return jda.getGatewayPing();
+    }
+
+    /**
+     * @return true if JDA is connected and the configured guild is available to this bot.
+     */
+    public boolean isConnected() {
+        if (jda == null || guildId <= 0) return false;
+        return jda.getGuildById(guildId) != null;
+    }
+
+    /**
+     * @return the live {@link net.dv8tion.jda.api.entities.Guild} this instance manages, or null
+     *         if the bot has not connected yet or the guild is not visible to it.
+     */
+    public net.dv8tion.jda.api.entities.Guild guild() {
+        if (jda == null || guildId <= 0) return null;
+        return jda.getGuildById(guildId);
+    }
+
+    /**
+     * Starts a historical scan on the configured guild. Returns the new job ID.
+     * Throws {@link IllegalStateException} if the guild is not available.
+     */
+    public long triggerHistoricalScan() {
+        var guild = guild();
+        if (guild == null) {
+            throw new IllegalStateException("Configured guild is not available to this bot");
+        }
+        return historicalScanCoordinator.startGuildScan(guild);
     }
 }

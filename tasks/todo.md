@@ -1,20 +1,24 @@
-# Current Task: Phase 6 Bulk Replay Orchestration
+# Current Task: Phase 7+8 Hardening Before Frontend
 
 ## Goal
 
-Make stored message reward recomputation runnable across the whole active
-message set instead of one subject at a time.
+Close the concrete backend risks found after the first API/auth slice so the
+frontend is not built on obvious security and operations debt.
 
 ## Plan
 
-- [x] Add a cursor-based active-message replay query so orchestration can walk stored messages deterministically in batches.
-- [x] Extend the replay service with a bulk active-message recomputation pass and a concrete run summary.
-- [x] Prove that batched replay skips deleted messages, advances by cursor, and applies replay across multiple batches cleanly.
-- [x] Validate the slice with focused DAO and replay-service tests, then rerun the broader suite and hygiene checks.
+- [x] Add OAuth state issuance, storage, callback validation, and single-use expiry.
+- [x] Move bulk message replay behind persisted async jobs with a single-running-job guard and status endpoint.
+- [x] Add leaderboard indexes through schema and migration.
+- [x] Return a pending dashboard DTO for authenticated guild members not yet reconciled into `members`.
+- [x] Validate rule `event_type` against the known event types Synapse can evaluate.
+- [x] Lock down production Quarkus non-application surfaces and document the cookie deployment topology.
+- [x] Add a small in-memory API rate limiter for OAuth, admin mutation, and ordinary API routes.
+- [x] Update risk/docs/endpoint inventory and run focused plus full validation.
 
 ## Review
 
-- Added a cursor-based replay candidate query in `MessageEventDao` so active stored messages can be walked deterministically by internal row ID while skipping deleted rows.
-- Extended `MessageRewardReplayService` with `replayAllActiveMessages(batchSize)`, which runs stored-message replay in batches and returns a concrete run summary instead of hand-waving about “bulk replay” with no implementation.
-- Added focused tests proving the DAO cursor query skips deleted messages and proving the bulk replay path processes multiple stored messages across multiple batches.
-- The remaining gap is no longer internal orchestration. It is the missing admin/API trigger surface that would let an operator actually invoke bulk replay safely.
+- Working from `local_docs/BACKEND_OPEN_RISKS.md`; Tier 1 items are security/ops blockers, not polish.
+- Keep the slice narrow: no rule mutation, no guest mode, no new frontend UX, no deployment ceremony.
+- Focused hardening tests, full test suite, diagnostics, and `git diff --check` pass.
+- Phase is ready to preserve in git with the validated hardening slice.

@@ -33,6 +33,7 @@ class MigrationManagerTest {
         Set<String> tables = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM sqlite_master WHERE type = 'table'");
         Set<String> messageColumns = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM pragma_table_info('messages')");
         Set<String> rewardLedgerColumns = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM pragma_table_info('reward_ledger')");
+        Set<String> rewardReplayJobColumns = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM pragma_table_info('reward_replay_jobs')");
         Set<String> successfulMigrations = JdbiTestSupport.queryStringSet(
                 jdbi,
                 "SELECT name FROM migrations WHERE succeeded = 1");
@@ -40,13 +41,16 @@ class MigrationManagerTest {
         assertAll(
                 () -> assertTrue(tables.contains("historical_scan_jobs")),
                 () -> assertTrue(tables.contains("historical_scan_checkpoints")),
+                () -> assertTrue(tables.contains("reward_replay_jobs")),
                 () -> assertTrue(messageColumns.contains("is_deleted")),
                 () -> assertTrue(messageColumns.contains("deleted_at")),
                 () -> assertTrue(rewardLedgerColumns.contains("subject_type")),
                 () -> assertTrue(rewardLedgerColumns.contains("subject_ext_id")),
+                () -> assertTrue(rewardReplayJobColumns.contains("batch_size")),
                 () -> assertTrue(successfulMigrations.contains("/schemas/migrations/1_historical_scan_state.sql")),
                 () -> assertTrue(successfulMigrations.contains("/schemas/migrations/2_message_delete_state.sql")),
-                () -> assertTrue(successfulMigrations.contains("/schemas/migrations/3_reward_subject_accounting.sql")));
+                () -> assertTrue(successfulMigrations.contains("/schemas/migrations/3_reward_subject_accounting.sql")),
+                () -> assertTrue(successfulMigrations.contains("/schemas/migrations/4_api_hardening.sql")));
     }
 
     @Test
@@ -66,6 +70,7 @@ class MigrationManagerTest {
         Set<String> indexes = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM sqlite_master WHERE type = 'index'");
         Set<String> messageColumns = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM pragma_table_info('messages')");
         Set<String> rewardLedgerColumns = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM pragma_table_info('reward_ledger')");
+        Set<String> rewardReplayJobColumns = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM pragma_table_info('reward_replay_jobs')");
         Set<String> successfulMigrations = JdbiTestSupport.queryStringSet(
                 jdbi,
                 "SELECT name FROM migrations WHERE succeeded = 1");
@@ -73,15 +78,21 @@ class MigrationManagerTest {
         assertAll(
                 () -> assertTrue(tables.contains("historical_scan_jobs")),
                 () -> assertTrue(tables.contains("historical_scan_checkpoints")),
+                () -> assertTrue(tables.contains("reward_replay_jobs")),
                 () -> assertTrue(messageColumns.contains("is_deleted")),
                 () -> assertTrue(messageColumns.contains("deleted_at")),
                 () -> assertTrue(rewardLedgerColumns.contains("subject_type")),
                 () -> assertTrue(rewardLedgerColumns.contains("subject_ext_id")),
+                () -> assertTrue(rewardReplayJobColumns.contains("batch_size")),
                 () -> assertTrue(indexes.contains("messages_is_deleted_idx")),
                 () -> assertTrue(indexes.contains("reward_ledger_subject_idx")),
+                () -> assertTrue(indexes.contains("reward_replay_jobs_single_running_uq")),
+                () -> assertTrue(indexes.contains("members_p_currency_leaderboard_idx")),
+                () -> assertTrue(indexes.contains("members_s_currency_leaderboard_idx")),
                 () -> assertTrue(successfulMigrations.contains("/schemas/migrations/1_historical_scan_state.sql")),
                 () -> assertTrue(successfulMigrations.contains("/schemas/migrations/2_message_delete_state.sql")),
-                () -> assertTrue(successfulMigrations.contains("/schemas/migrations/3_reward_subject_accounting.sql")));
+                () -> assertTrue(successfulMigrations.contains("/schemas/migrations/3_reward_subject_accounting.sql")),
+                () -> assertTrue(successfulMigrations.contains("/schemas/migrations/4_api_hardening.sql")));
     }
 
     private static Jdbi blankSqlite(Path databasePath) {
@@ -142,6 +153,17 @@ class MigrationManagerTest {
                     transaction_type           VARCHAR NOT NULL DEFAULT 'AWARD',
                     reverses_reward_ledger_id  BIGINT,
                     created_at                 TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE members (
+                    id              INTEGER PRIMARY KEY,
+                    ext_id          BIGINT NOT NULL UNIQUE,
+                    name            VARCHAR NOT NULL,
+                    is_bot          INTEGER NOT NULL DEFAULT 0,
+                    is_active       INTEGER NOT NULL DEFAULT 1,
+                    p_currency      INTEGER NOT NULL DEFAULT 0,
+                    level           INTEGER NOT NULL DEFAULT 1,
+                    s_currency      INTEGER NOT NULL DEFAULT 0
                 );
                 """).execute());
     }

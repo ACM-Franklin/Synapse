@@ -17,6 +17,7 @@ import edu.franklin.acm.synapse.activity.message.MessageEventDao;
 import edu.franklin.acm.synapse.activity.message.MessageReactionDao;
 import edu.franklin.acm.synapse.activity.migrations.MigrationDao;
 import edu.franklin.acm.synapse.activity.rules.RewardLedgerDao;
+import edu.franklin.acm.synapse.activity.rules.RewardReplayJobDao;
 import edu.franklin.acm.synapse.activity.rules.RuleDao;
 import edu.franklin.acm.synapse.activity.rules.RuleEvaluationDao;
 import edu.franklin.acm.synapse.activity.rules.RuleOutcomeDao;
@@ -25,6 +26,7 @@ import edu.franklin.acm.synapse.activity.thread.ForumTagDao;
 import edu.franklin.acm.synapse.activity.thread.ThreadDao;
 import edu.franklin.acm.synapse.activity.thread.ThreadTagDao;
 import edu.franklin.acm.synapse.activity.voice.VoiceSessionDao;
+import edu.franklin.acm.synapse.api.service.StatsQueryDao;
 import io.agroal.api.AgroalDataSource;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -188,6 +190,12 @@ public class DaoProducer {
 
     @Produces
     @ApplicationScoped
+    public RewardReplayJobDao rewardReplayJobDao() {
+        return jdbi.onDemand(RewardReplayJobDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
     public SeasonDao seasonDao() {
         return jdbi.onDemand(SeasonDao.class);
     }
@@ -208,5 +216,11 @@ public class DaoProducer {
     @ApplicationScoped
     public ThreadTagDao threadTagDao() {
         return jdbi.onDemand(ThreadTagDao.class);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public StatsQueryDao statsQueryDao() {
+        return jdbi.onDemand(StatsQueryDao.class);
     }
 }
