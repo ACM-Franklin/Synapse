@@ -1,23 +1,40 @@
-# Current Task: Pre-Frontend Backend Risk Burn-Down
+# Current Task: Vite/Svelte Frontend MVP Shell
 
 ## Goal
 
-Address backend readiness concerns that do not require user-provided Discord
-OAuth secrets or manual Discord application changes before frontend integration.
+Create a real Vite + Svelte frontend in `Synapse Frontend/` that renders the
+implemented MVP API contract without inventing unsupported product surfaces.
+
+## Product Boundary
+
+- Auth is Discord OAuth through backend-owned `/api/auth/*` endpoints.
+- Member UI can show current user, guild summary, personal dashboard, recent
+	reward rows, and authenticated leaderboard data.
+- Admin UI can show system status, read-only rules, historical scan operation
+	state, and message reward replay operation state.
+- Event lake search, member directory APIs, channel inventory APIs, settings,
+	setup, seasons, achievements, marketplace, and rule mutation stay out until
+	backend endpoints exist.
 
 ## Plan
 
-- [x] Add non-secret runtime config validation for bot/frontend/prod readiness.
-- [x] Add a bot-disabled runtime mode for DB/API smoke tests.
-- [x] Prove the PostgreSQL production profile with a temporary local container.
-- [x] Document rule-authoring constraints so frontend design does not invent unsupported behavior.
-- [x] Run tests, script checks, and commit tracked changes.
+- [x] Preserve the static wireframe pack as reference material.
+- [x] Add Vite/Svelte/TypeScript project files in `Synapse Frontend/`.
+- [x] Add a typed API client matching the Java DTO records and frontend handoff.
+- [x] Build authenticated shell, login gate, member dashboard, leaderboard,
+	admin status, read-only rules, scan, and replay views.
+- [x] Add honest loading, empty, error, pending-member, and access-denied states.
+- [x] Install dependencies and run the frontend build.
 
 ## Review
 
-- `scripts/check-runtime-config.sh bot` passes against current `.env`.
-- `scripts/check-runtime-config.sh frontend` correctly reports missing OAuth client ID, client secret, and admin role IDs without printing secret values.
-- `scripts/check-runtime-config.sh prod` correctly reports missing production DB values without printing secret values.
-- `scripts/prod-postgres-smoke.sh` passed: temporary PostgreSQL plus prod-profile backend reached `/api/health` with JDA disabled and schema tables present.
-- Rule authoring remains read-only for the first frontend; the builder contract is documented locally and requires backend mutation/catalogue/simulation work before editable rules are safe.
-- Full test suite passes and `git diff --check` is clean.
+- Added a runnable Vite/Svelte/TypeScript app under `Synapse Frontend/`.
+- Root `index.html` now mounts the Svelte app; `wireframes.html` preserves access
+	to the static reference pack.
+- API client uses `credentials: include`, optional `VITE_SYNAPSE_API_BASE`, and
+	DTO shapes matching the Java records.
+- UI is limited to implemented endpoints: auth, guild summary, member dashboard,
+	leaderboard, system status, read-only rules, historical scan, and replay.
+- No rule mutation, setup wizard, public leaderboard, achievements, seasons, or
+	marketplace UI was added.
+- `npm install`, `npm run check`, `npm run build`, and `git diff --check` pass.

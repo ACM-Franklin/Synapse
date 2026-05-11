@@ -133,7 +133,7 @@
           </div>
           <div class="hstack" style="justify-content: space-between;">
             <div class="dim mono" style="font-size: 11px;">8 412 events · 214 unique members · 38 channels · 2 480 matched at least one rule</div>
-            <div class="hstack mono" style="font-size: 11px; color: var(--text-3);"><span>↗ open in rule editor</span><span>·</span><span>↗ export csv</span></div>
+            <div class="hstack mono" style="font-size: 11px; color: var(--text-3);"><span>↗ inspect matched rules</span><span>·</span><span>↗ export csv</span></div>
           </div>
           <div class="card" style="padding: 0;">
             <table class="tbl">
@@ -228,62 +228,62 @@
         <div class="tb"><span>admin / event lake / taxonomy</span></div>
         <div class="lake-tabs"><span class="tab">Live tail</span><span class="tab">Search</span><span class="tab">Aggregates</span><span class="tab active">Taxonomy<span class="count">11 types</span></span></div>
         <div class="pg">
-          <div class="dim" style="font-size: 13px; max-width: 680px;">Each event type below is a row schema in the lake. Click <b>build rule</b> to start a new rule scoped to that event_type — Synapse pre-populates the predicate catalog with the fields available.</div>
+          <div class="dim" style="font-size: 13px; max-width: 680px;">Each event type below is a row schema in the lake. Use this tab to inspect fields, understand event volume, and ground later rule work in real data instead of guesswork.</div>
 
           <div class="tax-grid">
             <div class="card tax-card">
               <div class="hstack" style="justify-content: space-between;"><span class="name">message_received</span><span class="tag" style="color: var(--accent);">most common</span></div>
               <div class="count">1 821 480</div>
               <div class="desc">Fields: content_length, channel, thread_id, is_reply, mentions[], has_attachments, created_at.</div>
-              <div class="actions"><button class="btn sm">Build rule</button><button class="btn sm ghost">Sample →</button></div>
+              <div class="actions"><button class="btn sm">Inspect fields</button><button class="btn sm ghost">Sample →</button></div>
             </div>
             <div class="card tax-card">
               <div class="hstack" style="justify-content: space-between;"><span class="name">reaction_added</span></div>
               <div class="count">412 088</div>
               <div class="desc">Fields: emoji_name, emoji_ext_id, message_id, target_member, count.</div>
-              <div class="actions"><button class="btn sm">Build rule</button><button class="btn sm ghost">Sample →</button></div>
+              <div class="actions"><button class="btn sm">Inspect fields</button><button class="btn sm ghost">Sample →</button></div>
             </div>
             <div class="card tax-card">
               <div class="hstack" style="justify-content: space-between;"><span class="name">voice_join</span></div>
               <div class="count">88 412</div>
               <div class="desc">Fields: channel, joined_at. Pairs with voice_leave to compute session length.</div>
-              <div class="actions"><button class="btn sm">Build rule</button></div>
+              <div class="actions"><button class="btn sm">Inspect fields</button></div>
             </div>
             <div class="card tax-card">
               <div class="hstack" style="justify-content: space-between;"><span class="name">voice_leave</span></div>
               <div class="count">88 401</div>
               <div class="desc">Fields: channel, left_at, duration_secs. 11 currently-open sessions.</div>
-              <div class="actions"><button class="btn sm">Build rule</button></div>
+              <div class="actions"><button class="btn sm">Inspect fields</button></div>
             </div>
             <div class="card tax-card">
               <div class="hstack" style="justify-content: space-between;"><span class="name">thread_created</span></div>
               <div class="count">2 401</div>
               <div class="desc">Fields: parent_channel, thread_type, owner, name, tags[].</div>
-              <div class="actions"><button class="btn sm">Build rule</button></div>
+              <div class="actions"><button class="btn sm">Inspect fields</button></div>
             </div>
             <div class="card tax-card">
               <div class="hstack" style="justify-content: space-between;"><span class="name">message_edited</span></div>
               <div class="count">14 220</div>
               <div class="desc">UPSERT into messages — only current state is kept. Edit history not stored.</div>
-              <div class="actions"><button class="btn sm">Build rule</button></div>
+              <div class="actions"><button class="btn sm">Inspect fields</button></div>
             </div>
             <div class="card tax-card">
               <div class="hstack" style="justify-content: space-between;"><span class="name">member_role_change</span></div>
               <div class="count">1 088</div>
               <div class="desc">Fields: roles_added[], roles_removed[]. Power gating + officer-promoted rules.</div>
-              <div class="actions"><button class="btn sm">Build rule</button></div>
+              <div class="actions"><button class="btn sm">Inspect fields</button></div>
             </div>
             <div class="card tax-card">
               <div class="hstack" style="justify-content: space-between;"><span class="name">message_attachment</span></div>
               <div class="count">8 412</div>
               <div class="desc">Fields: filename, content_type, size, width, height, duration_secs.</div>
-              <div class="actions"><button class="btn sm">Build rule</button></div>
+              <div class="actions"><button class="btn sm">Inspect fields</button></div>
             </div>
             <div class="card tax-card">
               <div class="hstack" style="justify-content: space-between;"><span class="name">message_pin</span></div>
               <div class="count">488</div>
               <div class="desc">Pin / unpin events. Often used by officer-kudos rule.</div>
-              <div class="actions"><button class="btn sm">Build rule</button></div>
+              <div class="actions"><button class="btn sm">Inspect fields</button></div>
             </div>
           </div>
         </div>

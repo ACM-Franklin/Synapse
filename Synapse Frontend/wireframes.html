@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Synapse Wireframes</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body { padding: 0; }
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 56px 28px 80px; }
+    .lede { max-width: 760px; color: var(--text-2); line-height: 1.6; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 28px; }
+    .link-card { padding: 18px 20px; text-decoration: none; color: inherit; display: grid; gap: 8px; }
+    .link-card:hover { border-color: var(--accent-dim); }
+    .k { font-family: var(--mono); font-size: 10.5px; color: var(--text-4); letter-spacing: 0.08em; text-transform: uppercase; }
+    .t { font-size: 17px; font-weight: 500; }
+    .d { color: var(--text-3); font-size: 13px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="k">Synapse frontend reference</div>
+    <h1>Wireframe pack</h1>
+    <p class="lede">
+      The runnable Vite/Svelte application now owns the root page. These static files remain as reference material for visual direction and product boundaries.
+    </p>
+    <section class="grid">
+      <a class="link-card card" href="build-now/README.md"><span class="k">Current</span><span class="t">Build Now Notes</span><span class="d">The screens and ideas allowed by the current backend contract.</span></a>
+      <a class="link-card card" href="future/README.md"><span class="k">Later</span><span class="t">Future Notes</span><span class="d">Useful ideas that require more backend surface area first.</span></a>
+      <a class="link-card card" href="screens/01-login.html"><span class="k">01</span><span class="t">Login</span><span class="d">Discord OAuth entry and access-denied states.</span></a>
+      <a class="link-card card" href="screens/02-admin-dashboard.html"><span class="k">02</span><span class="t">Admin Dashboard</span><span class="d">Status-first operational view.</span></a>
+      <a class="link-card card" href="screens/03-member-dashboard.html"><span class="k">03</span><span class="t">Member Dashboard</span><span class="d">Currency, rank, and reward history direction.</span></a>
+      <a class="link-card card" href="screens/05-event-lake.html"><span class="k">05</span><span class="t">Event Lake</span><span class="d">Reference only until event-search APIs exist.</span></a>
+      <a class="link-card card" href="screens/06-leaderboard.html"><span class="k">06</span><span class="t">Leaderboard</span><span class="d">Authenticated ranking view.</span></a>
+      <a class="link-card card" href="screens/08-channels-scan.html"><span class="k">08</span><span class="t">Channels And Scan</span><span class="d">Useful direction for future channel inventory APIs.</span></a>
+    </section>
+  </main>
+</body>
+</html>

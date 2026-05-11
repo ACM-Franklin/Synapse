@@ -58,3 +58,7 @@ data/*.db
 data/*.sqlite
 data/*.sqlite-*
 /old-synapse/
+
+# Frontend
+Synapse Frontend/node_modules/
+Synapse Frontend/dist/

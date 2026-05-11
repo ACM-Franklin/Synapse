@@ -1,242 +1,197 @@
 <!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8" /><title>01 · Login &amp; guild connect</title>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Synapse Frontend Ideas · Login</title>
+<link rel="stylesheet" href="../styles.css" />
 <link rel="stylesheet" href="screen.css" />
 <style>
-  .variant-row { grid-template-columns: 1fr 1fr; }
-  .login-frame { width: 100%; aspect-ratio: 16/10; display: grid; place-items: center; position: relative; padding: 40px; background: var(--bg-0); }
-  .login-frame::before {
-    content: ""; position: absolute; inset: 0;
+  .auth-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
     background:
-      radial-gradient(circle at 20% 30%, oklch(0.30 0.10 275 / 0.18), transparent 50%),
-      radial-gradient(circle at 80% 70%, oklch(0.30 0.10 200 / 0.10), transparent 50%);
-    pointer-events: none;
+      radial-gradient(circle at 15% 20%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 28%),
+      radial-gradient(circle at 80% 15%, color-mix(in oklab, var(--success) 12%, transparent), transparent 24%),
+      linear-gradient(180deg, oklch(0.18 0.015 270), oklch(0.145 0.012 270));
   }
-  .login-card {
-    position: relative;
-    background: var(--bg-1); border: 1px solid var(--line);
-    border-radius: var(--r-lg); padding: 36px 36px 28px;
-    width: 460px; display: flex; flex-direction: column; gap: 20px;
+  .auth-copy {
+    padding: 72px 56px 56px;
+    border-right: 1px solid var(--line-soft);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 48px;
   }
-  .lc-brand { display: flex; align-items: center; gap: 12px; }
-  .lc-brand .brand-mark { width: 32px; height: 32px; border-radius: 8px; }
-  .lc-brand .brand-name { font-size: 18px; font-weight: 600; }
-  .lc-brand .brand-sub { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); margin-top: 1px; }
-  .lc-title { font-size: 22px; font-weight: 500; letter-spacing: -0.01em; max-width: 380px; line-height: 1.25; }
-  .lc-desc { color: var(--text-3); font-size: 13px; line-height: 1.55; }
-  .lc-divider { height: 1px; background: var(--line-soft); }
-  .oauth-btn {
-    display: flex; align-items: center; gap: 12px; justify-content: center;
-    padding: 12px 16px; background: var(--accent); color: oklch(0.16 0.012 270);
-    border-radius: var(--r-sm); font-weight: 500; cursor: pointer;
+  .auth-copy h1 {
+    font-size: 56px;
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+    max-width: 620px;
+    margin: 14px 0 18px;
   }
-  .oauth-btn .ic-d { width: 18px; height: 14px; border-radius: 4px; background: oklch(0.16 0.012 270); position: relative; }
-  .oauth-btn .ic-d::before, .oauth-btn .ic-d::after { content: ""; position: absolute; width: 4px; height: 4px; background: var(--accent); border-radius: 50%; top: 5px; }
-  .oauth-btn .ic-d::before { left: 4px; }
-  .oauth-btn .ic-d::after { right: 4px; }
-  .lc-feat { display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; color: var(--text-2); }
-  .lc-feat .f { display: flex; gap: 10px; align-items: start; }
-  .lc-feat .f::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin-top: 7px; flex-shrink: 0; }
-  .lc-foot { font-family: var(--mono); font-size: 10.5px; color: var(--text-4); display: flex; gap: 14px; }
-
-  /* v2 — split */
-  .v2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
-  .v2 .left { padding: 56px 48px; display: flex; flex-direction: column; gap: 24px; border-right: 1px solid var(--line); }
-  .v2 .right { padding: 56px 48px; background: var(--bg-1); display: flex; flex-direction: column; gap: 18px; }
-  .v2 .quote { font-size: 18px; line-height: 1.4; color: var(--text); max-width: 420px; }
-  .v2 .quote em { font-style: normal; color: var(--accent); }
-  .v2 .stat-line { display: flex; gap: 28px; flex-wrap: wrap; }
-  .v2 .stat-line .one { display: flex; flex-direction: column; gap: 2px; }
-  .v2 .stat-line .one .n { font-family: var(--mono); font-size: 22px; font-weight: 500; }
-  .v2 .stat-line .one .l { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; }
-
-  /* v3 — guild authorize */
-  .v3 .guild-pick { display: flex; flex-direction: column; gap: 10px; max-height: 220px; overflow: auto; }
-  .v3 .gp-row {
-    display: flex; align-items: center; gap: 14px;
-    padding: 12px; border: 1px solid var(--line); border-radius: var(--r-sm);
-    background: var(--bg-2);
+  .auth-copy p {
+    color: var(--text-2);
+    font-size: 16px;
+    line-height: 1.65;
+    max-width: 560px;
   }
-  .v3 .gp-row.selected { border-color: var(--accent); background: var(--accent-bg); }
-  .v3 .gp-row .gi { width: 36px; height: 36px; border-radius: 10px; }
-  .v3 .gp-row .nm { font-weight: 500; font-size: 13.5px; }
-  .v3 .gp-row .id { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); }
-  .v3 .gp-row .right { margin-left: auto; }
-  .v3 .gp-row .perm { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); }
-  .v3 .gp-row.selected .perm { color: var(--accent); }
-  .scope {
-    display: flex; gap: 10px; align-items: start;
-    padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: 4px;
-    font-size: 12px; color: var(--text-2);
+  .pill-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .pill {
+    border: 1px solid var(--line-soft);
+    background: color-mix(in oklab, var(--surface) 78%, transparent);
+    padding: 10px 12px;
+    border-radius: var(--r-pill);
+    font-size: 12px;
+    color: var(--text-2);
   }
-  .scope .check { width: 14px; height: 14px; border: 1.4px solid var(--accent); border-radius: 3px; display: grid; place-items: center; flex-shrink: 0; margin-top: 2px; }
-  .scope .check::after { content: "✓"; color: var(--accent); font-size: 10px; }
-
-  /* v4 — non-member */
-  .v4 .lc-card { background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: flex; gap: 14px; align-items: center; }
-  .v4 .err-banner {
-    border-left: 2px solid var(--err); background: oklch(0.30 0.06 25 / 0.20);
-    padding: 10px 14px; border-radius: 0 4px 4px 0;
-    font-size: 12.5px; color: oklch(0.85 0.06 25);
+  .auth-panel-wrap {
+    padding: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .auth-panel {
+    width: min(520px, 100%);
+    display: grid;
+    gap: 20px;
+  }
+  .panel {
+    padding: 26px;
+    display: grid;
+    gap: 18px;
+    background: color-mix(in oklab, var(--surface) 88%, transparent);
+    backdrop-filter: blur(10px);
+  }
+  .panel h2 { margin: 0; font-size: 22px; font-weight: 500; }
+  .panel p { margin: 0; color: var(--text-3); line-height: 1.6; }
+  .meta {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .meta .tile {
+    padding: 14px;
+    border: 1px solid var(--line-soft);
+    border-radius: 14px;
+    background: var(--surface-2);
+  }
+  .meta .k {
     font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: var(--text-4);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .meta .v {
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+  .action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px;
+    border: 1px solid var(--line-soft);
+    border-radius: 16px;
+    background: var(--surface-2);
+  }
+  .action strong { display: block; font-size: 14px; }
+  .action span { color: var(--text-3); font-size: 12px; }
+  .button-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .button-row .btn { min-width: 170px; justify-content: center; }
+  .state-note {
+    padding: 16px 18px;
+    border-radius: 16px;
+    background: color-mix(in oklab, var(--danger) 18%, var(--surface));
+    border: 1px solid color-mix(in oklab, var(--danger) 34%, var(--line));
+  }
+  .state-note strong { display: block; margin-bottom: 6px; }
+  .state-note p { margin: 0; color: var(--text-2); }
+  @media (max-width: 1024px) {
+    .auth-shell { grid-template-columns: 1fr; }
+    .auth-copy { border-right: 0; border-bottom: 1px solid var(--line-soft); }
+    .auth-copy h1 { font-size: 44px; }
+  }
+  @media (max-width: 640px) {
+    .auth-copy, .auth-panel-wrap { padding: 28px 22px; }
+    .meta { grid-template-columns: 1fr; }
+    .button-row .btn { width: 100%; }
   }
 </style>
 </head>
 <body>
-
-<div class="screen-head">
-  <div>
-    <div class="num">01 · auth</div>
-    <h1>Login &amp; guild connect</h1>
-  </div>
-  <div class="desc">OAuth landing, guild authorize, non-member fallback. Synapse manages exactly one guild — the connect step is opinionated and one-time.</div>
-  <div class="right"><a href="../index.html" class="back">← back to index</a></div>
-</div>
-
-<div class="canvas">
-
-<!-- ────────── v1 + v2 ────────── -->
-<div class="variant-row">
-
-  <!-- v1 — minimal centered -->
-  <div class="variant">
-    <div class="variant-head"><span class="v-num">v1</span><span class="v-name">Centered, single decision</span><span class="v-tag">recommended</span></div>
-    <p class="variant-desc">No copy doom-scroll. One brand mark, one promise, one button. Footer rotates a different "Synapse fact" each load.</p>
-    <div class="artboard">
-      <div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse.example.org / connect</div></div>
-      <div class="login-frame">
-        <div class="login-card">
-          <div class="lc-brand">
-            <div class="brand-mark"></div>
-            <div><div class="brand-name">Synapse</div><div class="brand-sub">community engagement engine · v0.6</div></div>
-          </div>
-          <div class="lc-title">Sign in to your guild's instance.</div>
-          <div class="lc-desc">Discord OAuth verifies your guild membership. We never see your DMs, and we don't act on your behalf.</div>
-          <div class="oauth-btn"><span class="ic-d"></span><span>Continue with Discord</span></div>
-          <div class="lc-divider"></div>
-          <div class="lc-foot"><span>Privacy</span><span>·</span><span>Source</span><span>·</span><span>Status</span><span style="margin-left: auto;">guild · acm-franklin</span></div>
-        </div>
-      </div>
+<div class="auth-shell">
+  <section class="auth-copy">
+    <div>
+      <div class="eyebrow"><span class="dot"></span> Screen 01 · Auth</div>
+      <h1>Let people in through Discord, then get the hell out of the way.</h1>
+      <p>
+        Synapse does not need a theatrical onboarding funnel. The backend owns the OAuth dance, sets state, handles the callback, and decides whether the user belongs here.
+        The frontend should present a clean entry point, a calm explanation of what access means, and a blunt denial state when the user is not part of the guild or lacks the right role.
+      </p>
     </div>
-  </div>
 
-  <!-- v2 — split with proof -->
-  <div class="variant">
-    <div class="variant-head"><span class="v-num">v2</span><span class="v-name">Split — what this instance has done</span><span class="v-tag">data forward</span></div>
-    <p class="variant-desc">Trust through transparency. The right side previews live numbers from this specific guild — even before you authenticate.</p>
-    <div class="artboard">
-      <div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse.example.org / connect</div></div>
-      <div class="v2" style="height: 540px;">
-        <div class="left">
-          <div class="lc-brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse</div><div class="brand-sub">acm-franklin · 1 guild</div></div></div>
-          <div class="quote">A transparent record of <em>everything that happened</em> — and a configurable rule engine that explains every reward.</div>
-          <div class="oauth-btn"><span class="ic-d"></span><span>Continue with Discord</span></div>
-          <div class="lc-feat">
-            <div class="f">Discord OAuth, member-of-guild gated.</div>
-            <div class="f">Read-only — Synapse never posts as you.</div>
-            <div class="f">Self-hosted instance · single tenant.</div>
-          </div>
-        </div>
-        <div class="right">
-          <div class="section-title">This instance, right now</div>
-          <div class="stat-line">
-            <div class="one"><span class="n">1 248</span><span class="l">members</span></div>
-            <div class="one"><span class="n">2.4M</span><span class="l">events</span></div>
-            <div class="one"><span class="n">38</span><span class="l">rules · live</span></div>
-          </div>
-          <div class="lc-divider"></div>
-          <div class="vstack">
-            <span class="muted mono" style="font-size: 11px;">scanner status</span>
-            <div class="hstack"><span class="tag live">live · gateway</span><span class="dim mono" style="font-size: 11px;">last event 2s ago</span></div>
-            <div class="hstack"><span class="tag">historical · idle</span><span class="dim mono" style="font-size: 11px;">last scan 14d ago · 100% coverage</span></div>
-          </div>
-          <div class="lc-divider"></div>
-          <div class="muted" style="font-size: 12px;">Want to run your own instance? <span style="color: var(--accent);">github.com/ACM-Franklin/Synapse →</span></div>
-        </div>
-      </div>
+    <div class="pill-row">
+      <div class="pill">Backend generates the Discord authorize URL</div>
+      <div class="pill">Frontend navigates browser, not fetches Discord OAuth</div>
+      <div class="pill">Single guild, authenticated product</div>
+      <div class="pill">No guest route, no setup wizard, no guild picker</div>
     </div>
-  </div>
+  </section>
 
-</div>
-
-<!-- ────────── v3 + v4 ────────── -->
-<div class="variant-row">
-
-  <!-- v3 — admin promote / authorize -->
-  <div class="variant">
-    <div class="variant-head"><span class="v-num">v3</span><span class="v-name">Admin authorize · scope review</span><span class="v-tag">first-run only</span></div>
-    <p class="variant-desc">Rare path: the very first admin grants Synapse the role-bound permission to read the guild. Permissions are itemized — never a wall of fine print.</p>
-    <div class="artboard">
-      <div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse.example.org / connect / authorize</div></div>
-      <div class="login-frame v3">
-        <div class="login-card" style="width: 520px;">
-          <div class="hstack" style="justify-content: space-between;">
-            <div class="lc-brand"><div class="brand-mark"></div><div><div class="brand-name">Authorize Synapse</div><div class="brand-sub">step 2 / 3 · pick guild</div></div></div>
-            <div class="hstack mono" style="font-size: 10.5px; color: var(--text-3);"><div class="dot"></div>—<div class="dot live"></div>—<div class="dot"></div></div>
+  <section class="auth-panel-wrap">
+    <div class="auth-panel">
+      <article class="panel card">
+        <div>
+          <div class="eyebrow"><span class="dot"></span> Primary State</div>
+          <h2>Continue with Discord</h2>
+        </div>
+        <p>
+          This is the only real entry. Hit the backend login endpoint, receive the authorize URL, and redirect the browser.
+          Anything fancier than that is UI cosplay.
+        </p>
+        <div class="meta">
+          <div class="tile">
+            <div class="k">Backend Contract</div>
+            <div class="v">GET /api/auth/login returns an authorize URL and sets the OAuth state cookie.</div>
           </div>
-          <div class="lc-desc">You're signed in as <span class="mono" style="color: var(--text);">@haskell.thebes</span>. Choose the guild this instance manages. Synapse is single-tenant — this choice is permanent without a redeploy.</div>
-          <div class="guild-pick">
-            <div class="gp-row selected">
-              <div class="gi" style="background: linear-gradient(135deg, oklch(0.55 0.14 275), oklch(0.55 0.12 200));"></div>
-              <div><div class="nm">ACM @ Franklin</div><div class="id">id · 1 209 38 4192 8810</div></div>
-              <div class="right perm">admin · 4 roles match</div>
-            </div>
-            <div class="gp-row">
-              <div class="gi" style="background: oklch(0.40 0.10 80);"></div>
-              <div><div class="nm">Hack Club</div><div class="id">id · 850 392 184 029 110</div></div>
-              <div class="right perm">member only</div>
-            </div>
-            <div class="gp-row">
-              <div class="gi" style="background: oklch(0.40 0.10 30);"></div>
-              <div><div class="nm">Tabletop Tuesdays</div><div class="id">id · 740 928 401 002 994</div></div>
-              <div class="right perm">member only</div>
-            </div>
-          </div>
-          <div class="lc-divider"></div>
-          <div class="vstack" style="gap: 6px;">
-            <div class="scope"><span class="check"></span><div><b>Read messages, reactions, voice state.</b><br/><span class="dim">Required to populate the event lake. Stored, never forwarded.</span></div></div>
-            <div class="scope"><span class="check"></span><div><b>Read guild member &amp; role data.</b><br/><span class="dim">For role-based predicates and admin gating.</span></div></div>
-          </div>
-          <div class="hstack" style="justify-content: space-between;">
-            <button class="btn ghost">Back</button>
-            <button class="btn primary">Authorize for ACM @ Franklin →</button>
+          <div class="tile">
+            <div class="k">Frontend Behavior</div>
+            <div class="v">Show a single primary CTA, then hand off navigation to Discord and wait for callback completion.</div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- v4 — non-member fallback -->
-  <div class="variant">
-    <div class="variant-head"><span class="v-num">v4</span><span class="v-name">Not a member · fallback</span><span class="v-tag">edge case</span></div>
-    <p class="variant-desc">If the authenticated Discord account isn't in the guild this instance manages, we degrade gracefully — public leaderboard if enabled, otherwise a clear dead-end.</p>
-    <div class="artboard">
-      <div class="browser"><div class="dots"><i></i><i></i><i></i></div><div class="url">synapse.example.org / connect</div></div>
-      <div class="login-frame v4">
-        <div class="login-card" style="width: 480px;">
-          <div class="lc-brand"><div class="brand-mark"></div><div><div class="brand-name">Synapse · ACM @ Franklin</div><div class="brand-sub">single-guild instance</div></div></div>
-          <div class="err-banner">@haskell.thebes is signed in, but is not a member of this guild.</div>
-          <div class="lc-desc">This instance only serves members of <b>ACM @ Franklin</b>. Two things you can do:</div>
-          <div class="vstack">
-            <div class="lc-card">
-              <div class="ic cr" style="color: var(--accent);"></div>
-              <div style="flex: 1;"><div style="font-weight: 500;">View the public leaderboard</div><div class="dim" style="font-size: 11.5px;">Read-only · current season only · admin opt-in</div></div>
-              <div class="kbd">→</div>
-            </div>
-            <div class="lc-card">
-              <div class="ic sq" style="color: var(--text-3);"></div>
-              <div style="flex: 1;"><div style="font-weight: 500;">Switch Discord accounts</div><div class="dim" style="font-size: 11.5px;">If you have another that's a guild member.</div></div>
-              <div class="kbd">↺</div>
-            </div>
+        <div class="action">
+          <div>
+            <strong>Button copy</strong>
+            <span>Continue with Discord</span>
           </div>
-          <div class="lc-divider"></div>
-          <div class="lc-foot"><span>Want an invite?</span><span class="mono" style="color: var(--accent); margin-left: auto;">discord.gg/acm-franklin →</span></div>
+          <a class="btn btn-primary" href="#">Launch OAuth</a>
         </div>
-      </div>
+      </article>
+
+      <article class="panel card">
+        <div>
+          <div class="eyebrow"><span class="dot"></span> Failure State</div>
+          <h2>Access denied, explained plainly</h2>
+        </div>
+        <p>
+          If the backend says the user does not belong here, say so clearly. No fake remediation flow, no guild-connection fantasy, no misleading promise that they can request access from inside the app.
+        </p>
+        <div class="state-note">
+          <strong>You authenticated, but this account cannot access Synapse.</strong>
+          <p>Synapse is limited to the configured Discord guild and approved roles. Switch accounts or talk to a guild administrator.</p>
+        </div>
+        <div class="button-row">
+          <a class="btn btn-secondary" href="#">Try another account</a>
+          <a class="btn btn-ghost" href="#">Back to landing</a>
+        </div>
+      </article>
     </div>
-  </div>
-
+  </section>
 </div>
-
-</div>
-</body></html>
+</body>
+</html>
