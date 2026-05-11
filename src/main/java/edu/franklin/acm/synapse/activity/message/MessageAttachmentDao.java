@@ -2,9 +2,11 @@ package edu.franklin.acm.synapse.activity.message;
 
 import java.util.List;
 
+import org.jdbi.v3.sqlobject.config.RegisterConstructorMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.statement.SqlBatch;
+import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 
 /**
@@ -42,4 +44,15 @@ public interface MessageAttachmentDao {
         WHERE message_id = :messageId
         """)
     void deleteByMessageId(@Bind("messageId") long messageId);
+
+    @RegisterConstructorMapper(MessageAttachment.class)
+    @SqlQuery("""
+        SELECT id, message_id, ext_id, filename, description,
+               content_type, size, width, height, duration_secs
+        FROM message_attachments
+        WHERE message_id = :messageId
+        ORDER BY id
+        LIMIT 1
+        """)
+    MessageAttachment findFirstByMessageId(@Bind("messageId") long messageId);
 }

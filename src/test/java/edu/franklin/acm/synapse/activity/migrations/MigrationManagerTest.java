@@ -32,6 +32,7 @@ class MigrationManagerTest {
 
         Set<String> tables = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM sqlite_master WHERE type = 'table'");
         Set<String> messageColumns = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM pragma_table_info('messages')");
+        Set<String> rewardLedgerColumns = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM pragma_table_info('reward_ledger')");
         Set<String> successfulMigrations = JdbiTestSupport.queryStringSet(
                 jdbi,
                 "SELECT name FROM migrations WHERE succeeded = 1");
@@ -41,8 +42,11 @@ class MigrationManagerTest {
                 () -> assertTrue(tables.contains("historical_scan_checkpoints")),
                 () -> assertTrue(messageColumns.contains("is_deleted")),
                 () -> assertTrue(messageColumns.contains("deleted_at")),
+                () -> assertTrue(rewardLedgerColumns.contains("subject_type")),
+                () -> assertTrue(rewardLedgerColumns.contains("subject_ext_id")),
                 () -> assertTrue(successfulMigrations.contains("/schemas/migrations/1_historical_scan_state.sql")),
-                () -> assertTrue(successfulMigrations.contains("/schemas/migrations/2_message_delete_state.sql")));
+                () -> assertTrue(successfulMigrations.contains("/schemas/migrations/2_message_delete_state.sql")),
+                () -> assertTrue(successfulMigrations.contains("/schemas/migrations/3_reward_subject_accounting.sql")));
     }
 
     @Test
@@ -61,6 +65,7 @@ class MigrationManagerTest {
         Set<String> tables = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM sqlite_master WHERE type = 'table'");
         Set<String> indexes = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM sqlite_master WHERE type = 'index'");
         Set<String> messageColumns = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM pragma_table_info('messages')");
+        Set<String> rewardLedgerColumns = JdbiTestSupport.queryStringSet(jdbi, "SELECT name FROM pragma_table_info('reward_ledger')");
         Set<String> successfulMigrations = JdbiTestSupport.queryStringSet(
                 jdbi,
                 "SELECT name FROM migrations WHERE succeeded = 1");
@@ -70,9 +75,13 @@ class MigrationManagerTest {
                 () -> assertTrue(tables.contains("historical_scan_checkpoints")),
                 () -> assertTrue(messageColumns.contains("is_deleted")),
                 () -> assertTrue(messageColumns.contains("deleted_at")),
+                () -> assertTrue(rewardLedgerColumns.contains("subject_type")),
+                () -> assertTrue(rewardLedgerColumns.contains("subject_ext_id")),
                 () -> assertTrue(indexes.contains("messages_is_deleted_idx")),
+                () -> assertTrue(indexes.contains("reward_ledger_subject_idx")),
                 () -> assertTrue(successfulMigrations.contains("/schemas/migrations/1_historical_scan_state.sql")),
-                () -> assertTrue(successfulMigrations.contains("/schemas/migrations/2_message_delete_state.sql")));
+                () -> assertTrue(successfulMigrations.contains("/schemas/migrations/2_message_delete_state.sql")),
+                () -> assertTrue(successfulMigrations.contains("/schemas/migrations/3_reward_subject_accounting.sql")));
     }
 
     private static Jdbi blankSqlite(Path databasePath) {
@@ -119,6 +128,20 @@ class MigrationManagerTest {
                     author_is_bot             INTEGER NOT NULL DEFAULT 0,
                     created_at                TIMESTAMP,
                     ingested_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE reward_ledger (
+                    id                         INTEGER PRIMARY KEY,
+                    rule_evaluation_id         BIGINT NOT NULL,
+                    rule_outcome_id            BIGINT NOT NULL,
+                    rule_id                    BIGINT NOT NULL,
+                    event_id                   BIGINT NOT NULL,
+                    member_id                  BIGINT NOT NULL,
+                    currency_type              VARCHAR NOT NULL,
+                    amount                     INTEGER NOT NULL,
+                    transaction_type           VARCHAR NOT NULL DEFAULT 'AWARD',
+                    reverses_reward_ledger_id  BIGINT,
+                    created_at                 TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
                 """).execute());
     }

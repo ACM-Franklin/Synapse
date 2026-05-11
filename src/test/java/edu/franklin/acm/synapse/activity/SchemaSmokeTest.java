@@ -26,6 +26,9 @@ class SchemaSmokeTest {
         Set<String> messageColumns = JdbiTestSupport.queryStringSet(jdbi, """
                 SELECT name FROM pragma_table_info('messages')
                 """);
+        Set<String> rewardLedgerColumns = JdbiTestSupport.queryStringSet(jdbi, """
+                SELECT name FROM pragma_table_info('reward_ledger')
+                """);
         Set<String> indexes = JdbiTestSupport.queryStringSet(jdbi, """
                 SELECT name FROM sqlite_master WHERE type = 'index'
                 """);
@@ -34,7 +37,10 @@ class SchemaSmokeTest {
                 () -> assertTrue(tables.contains("reward_ledger")),
                 () -> assertTrue(messageColumns.contains("is_deleted")),
                 () -> assertTrue(messageColumns.contains("deleted_at")),
+                                () -> assertTrue(rewardLedgerColumns.contains("subject_type")),
+                                () -> assertTrue(rewardLedgerColumns.contains("subject_ext_id")),
                 () -> assertTrue(indexes.contains("message_reactions_uq")),
+                                () -> assertTrue(indexes.contains("reward_ledger_subject_idx")),
                 () -> assertTrue(indexes.contains("reward_ledger_award_uq")));
     }
 }

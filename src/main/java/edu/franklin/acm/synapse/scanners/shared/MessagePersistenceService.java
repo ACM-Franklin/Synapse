@@ -74,22 +74,22 @@ public class MessagePersistenceService {
     }
 
     @SuppressWarnings("null")
-    public void updateMessageSnapshot(long memberInternalId, long channelInternalId, Long threadInternalId, Message m) {
-        jdbi.useTransaction(handle -> {
+    public long updateMessageSnapshot(long memberInternalId, long channelInternalId, Long threadInternalId, Message m) {
+        return jdbi.inTransaction(handle -> {
             EventDao txEvent = handle.attach(EventDao.class);
             MessageEventDao txMsg = handle.attach(MessageEventDao.class);
             MessageAttachmentDao txAtt = handle.attach(MessageAttachmentDao.class);
             MessageReactionDao txRxn = handle.attach(MessageReactionDao.class);
 
-            Long existingEventId = txMsg.findEventIdByExtId(m.getIdLong());
-            long eventId = existingEventId != null
-                    ? existingEventId
-                    : txEvent.insert(new Event(
-                            0L,
-                            memberInternalId,
-                            channelInternalId,
-                            "MESSAGE_CREATE",
-                            LocalDateTime.ofInstant(m.getTimeCreated().toInstant(), ZoneOffset.UTC).toString()));
+            LocalDateTime updateTimestamp = m.getTimeEdited() != null
+                    ? LocalDateTime.ofInstant(m.getTimeEdited().toInstant(), ZoneOffset.UTC)
+                    : LocalDateTime.now(ZoneOffset.UTC);
+            long eventId = txEvent.insert(new Event(
+                    0L,
+                    memberInternalId,
+                    channelInternalId,
+                    "MESSAGE_UPDATE",
+                    updateTimestamp.toString()));
             long messageId = txMsg.upsert(MessageEvent.fromDiscord(eventId, threadInternalId, m));
 
             txAtt.deleteByMessageId(messageId);
@@ -105,6 +105,7 @@ public class MessagePersistenceService {
                         .map(r -> MessageReaction.fromDiscord(messageId, r))
                         .toList());
             }
+            return eventId;
         });
     }
 }

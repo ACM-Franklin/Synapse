@@ -31,14 +31,14 @@ class RewardLedgerDaoTest {
 
         long awardId = dao.insert(new RewardLedgerEntry(
                 0L, evaluationId, outcomeId, ruleId, eventId, memberId,
-                "PRIMARY", 10, "AWARD", null, null));
+                "PRIMARY", 10, "AWARD", null, "MESSAGE", 7001L, null));
         List<RewardLedgerEntry> unreversedAwards = dao.findUnreversedAwardsByEventId(eventId);
 
         long deleteEventId = JdbiTestSupport.dao(jdbi, EventDao.class).insert(new edu.franklin.acm.synapse.activity.Event(
                 0L, memberId, channelId, "MESSAGE_DELETE", "2026-01-01T00:01:00"));
         dao.insert(new RewardLedgerEntry(
                 0L, evaluationId, outcomeId, ruleId, deleteEventId, memberId,
-                "PRIMARY", -10, "REVERSAL", awardId, null));
+                "PRIMARY", -10, "REVERSAL", awardId, "MESSAGE", 7001L, null));
 
         assertAll(
                 () -> assertEquals(1, unreversedAwards.size()),

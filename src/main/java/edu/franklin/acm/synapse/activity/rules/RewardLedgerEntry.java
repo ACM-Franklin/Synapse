@@ -11,5 +11,7 @@ public record RewardLedgerEntry(
         int amount,
         String transactionType,
         Long reversesRewardLedgerId,
+        String subjectType,
+        Long subjectExtId,
         String createdAt) {
 }

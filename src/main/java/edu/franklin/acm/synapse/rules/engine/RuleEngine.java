@@ -3,7 +3,12 @@ package edu.franklin.acm.synapse.rules.engine;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.jboss.logging.Logger;
 import org.jdbi.v3.core.Handle;
@@ -55,7 +60,11 @@ public class RuleEngine {
     public void onEvaluationRequest(@ObservesAsync RuleEvaluationRequest request) {
         RuleContext ctx = request.context();
         try {
-            evaluate(ctx);
+            if (request.replaceSubjectAwards()) {
+                evaluateReplacingSubject(ctx, false);
+            } else {
+                evaluate(ctx);
+            }
         } catch (Exception e) {
             log.errorf(e, "Rule evaluation failed for event %d (type=%s, member=%d)",
                     ctx.eventId(), ctx.eventType(), ctx.memberId());
@@ -78,6 +87,50 @@ public class RuleEngine {
                 log.errorf(e, "Error evaluating rule '%s' for event %d", rule.name(), ctx.eventId());
             }
         }
+    }
+
+    void evaluateReplacingSubject(RuleContext ctx, boolean ignoreCooldown) {
+        if (ctx.subjectType() == null || ctx.subjectExtId() == null) {
+            evaluate(ctx);
+            return;
+        }
+
+        List<Rule> candidates = ruleDao.findEnabledByEventType(ctx.eventType());
+        if (candidates.isEmpty()) return;
+
+        jdbi.useTransaction(handle -> {
+            RuleEvaluationDao txEvaluationDao = attachDao(handle, RuleEvaluationDao.class);
+            RuleOutcomeDao txOutcomeDao = attachDao(handle, RuleOutcomeDao.class);
+            RewardLedgerDao txRewardLedgerDao = attachDao(handle, RewardLedgerDao.class);
+            MemberDao txMemberDao = attachDao(handle, MemberDao.class);
+            RulePredicateDao txPredicateDao = attachDao(handle, RulePredicateDao.class);
+
+            List<RewardLedgerEntry> activeAwards = txRewardLedgerDao
+                .findUnreversedAwardsBySubject(ctx.subjectType(), ctx.subjectExtId());
+            RuleContext evaluationCtx = normalizeReplacementContext(ctx, activeAwards);
+            Map<Long, List<RewardLedgerEntry>> activeAwardsByRule = activeAwards
+                    .stream()
+                    .collect(Collectors.groupingBy(RewardLedgerEntry::ruleId));
+
+            for (Rule rule : candidates) {
+                if (!rule.appliesLive()) continue;
+
+                try {
+                    evaluateReplacementRule(
+                            rule,
+                            evaluationCtx,
+                            activeAwardsByRule.getOrDefault(rule.id(), Collections.emptyList()),
+                            ignoreCooldown,
+                            txPredicateDao,
+                            txEvaluationDao,
+                            txOutcomeDao,
+                            txRewardLedgerDao,
+                            txMemberDao);
+                } catch (Exception e) {
+                    log.errorf(e, "Error evaluating replacement for rule '%s' on event %d", rule.name(), ctx.eventId());
+                }
+            }
+        });
     }
 
     private void evaluateRule(Rule rule, RuleContext ctx) {
@@ -106,6 +159,53 @@ public class RuleEngine {
 
         // All predicates passed — fire the rule
         fire(rule, ctx);
+    }
+
+    private void evaluateReplacementRule(Rule rule, RuleContext ctx,
+                                         List<RewardLedgerEntry> existingAwards,
+                                         boolean ignoreCooldown,
+                                         RulePredicateDao predicateDao,
+                                         RuleEvaluationDao evaluationDao,
+                                         RuleOutcomeDao outcomeDao,
+                                         RewardLedgerDao rewardLedgerDao,
+                                         MemberDao memberDao) {
+        if (evaluationDao.countByRuleAndEvent(rule.id(), ctx.eventId()) > 0) {
+            return;
+        }
+
+        if (!ignoreCooldown && existingAwards.isEmpty() && rule.cooldownSeconds() > 0) {
+            String since = LocalDateTime.now(ZoneOffset.UTC)
+                    .minusSeconds(rule.cooldownSeconds())
+                    .format(SQL_TIMESTAMP_FORMAT);
+            if (evaluationDao.countRecentByRuleAndMember(rule.id(), ctx.memberId(), since) > 0) {
+                return;
+            }
+        }
+
+        List<RulePredicate> predicates = predicateDao.findByRuleId(rule.id());
+        for (RulePredicate predicate : predicates) {
+            if (!evaluatePredicate(predicate, ctx)) {
+                applyReplacementDiff(
+                        existingAwards,
+                        List.of(),
+                        ctx,
+                        null,
+                        0L,
+                        rewardLedgerDao,
+                        memberDao);
+                return;
+            }
+        }
+
+        List<RuleOutcome> outcomes = outcomeDao.findByRuleId(rule.id());
+        List<DesiredRewardLedgerEntry> desiredAwards = desiredAwards(outcomes, ctx);
+        if (existingAwardsEqualDesired(existingAwards, desiredAwards)) {
+            evaluationDao.insert(rule.id(), ctx.eventId(), ctx.memberId());
+            return;
+        }
+
+        long ruleEvaluationId = evaluationDao.insert(rule.id(), ctx.eventId(), ctx.memberId());
+        applyReplacementDiff(existingAwards, desiredAwards, ctx, rule, ruleEvaluationId, rewardLedgerDao, memberDao);
     }
 
     private boolean evaluatePredicate(RulePredicate predicate, RuleContext ctx) {
@@ -166,8 +266,56 @@ public class RuleEngine {
 
     private void recordCurrencyAward(long ruleEvaluationId, RuleOutcome outcome, RuleContext ctx,
                                      RewardLedgerDao rewardLedgerDao, String currencyType, int amount) {
-        rewardLedgerDao.insert(new RewardLedgerEntry(
-                0L,
+        rewardLedgerDao.insert(toRewardLedgerEntry(desiredAward(ruleEvaluationId, outcome, ctx, currencyType, amount)));
+    }
+
+    private void applyReplacementDiff(List<RewardLedgerEntry> existingAwards,
+                                      List<DesiredRewardLedgerEntry> desiredAwards,
+                                      RuleContext ctx,
+                                      Rule rule,
+                                      long ruleEvaluationId,
+                                      RewardLedgerDao rewardLedgerDao,
+                                      MemberDao memberDao) {
+        List<RewardLedgerEntry> unmatchedExisting = new ArrayList<>(existingAwards);
+        List<DesiredRewardLedgerEntry> unmatchedDesired = new ArrayList<>(desiredAwards);
+
+        for (DesiredRewardLedgerEntry desired : desiredAwards) {
+            RewardLedgerEntry matched = findMatchingExisting(unmatchedExisting, desired);
+            if (matched != null) {
+                unmatchedExisting.remove(matched);
+                unmatchedDesired.remove(desired);
+            }
+        }
+
+        reverseAwards(unmatchedExisting, ctx.eventId(), rewardLedgerDao, memberDao);
+        if (rule != null) {
+            log.infof("Rule '%s' fired for event %d (member %d)", rule.name(), ctx.eventId(), ctx.memberId());
+        }
+        for (DesiredRewardLedgerEntry desired : unmatchedDesired) {
+            rewardLedgerDao.insert(toRewardLedgerEntry(desired.withRuleEvaluationId(ruleEvaluationId)));
+            applyMemberBalance(memberDao, desired.currencyType(), desired.memberId(), desired.amount());
+        }
+    }
+
+    private List<DesiredRewardLedgerEntry> desiredAwards(List<RuleOutcome> outcomes, RuleContext ctx) {
+        List<DesiredRewardLedgerEntry> desired = new ArrayList<>();
+        for (RuleOutcome outcome : outcomes) {
+            if (!"CURRENCY".equals(outcome.type())) {
+                continue;
+            }
+            if (outcome.pCurrency() != null && outcome.pCurrency() != 0) {
+                desired.add(desiredAward(0L, outcome, ctx, "PRIMARY", outcome.pCurrency()));
+            }
+            if (outcome.sCurrency() != null && outcome.sCurrency() != 0) {
+                desired.add(desiredAward(0L, outcome, ctx, "SECONDARY", outcome.sCurrency()));
+            }
+        }
+        return desired;
+    }
+
+    private DesiredRewardLedgerEntry desiredAward(long ruleEvaluationId, RuleOutcome outcome, RuleContext ctx,
+                                                  String currencyType, int amount) {
+        return new DesiredRewardLedgerEntry(
                 ruleEvaluationId,
                 outcome.id(),
                 outcome.ruleId(),
@@ -175,9 +323,142 @@ public class RuleEngine {
                 ctx.memberId(),
                 currencyType,
                 amount,
+                ctx.subjectType(),
+                ctx.subjectExtId());
+    }
+
+    private RewardLedgerEntry toRewardLedgerEntry(DesiredRewardLedgerEntry desired) {
+        return new RewardLedgerEntry(
+                0L,
+                desired.ruleEvaluationId(),
+                desired.ruleOutcomeId(),
+                desired.ruleId(),
+                desired.eventId(),
+                desired.memberId(),
+                desired.currencyType(),
+                desired.amount(),
                 "AWARD",
                 null,
-                null));
+                desired.subjectType(),
+                desired.subjectExtId(),
+                null);
+    }
+
+    private boolean existingAwardsEqualDesired(List<RewardLedgerEntry> existingAwards,
+                                               List<DesiredRewardLedgerEntry> desiredAwards) {
+        if (existingAwards.size() != desiredAwards.size()) {
+            return false;
+        }
+
+        List<RewardLedgerEntry> unmatchedExisting = new ArrayList<>(existingAwards);
+        for (DesiredRewardLedgerEntry desired : desiredAwards) {
+            RewardLedgerEntry matched = findMatchingExisting(unmatchedExisting, desired);
+            if (matched == null) {
+                return false;
+            }
+            unmatchedExisting.remove(matched);
+        }
+        return unmatchedExisting.isEmpty();
+    }
+
+    private RewardLedgerEntry findMatchingExisting(List<RewardLedgerEntry> existingAwards,
+                                                   DesiredRewardLedgerEntry desired) {
+        for (RewardLedgerEntry existing : existingAwards) {
+            if (existing.ruleOutcomeId() == desired.ruleOutcomeId()
+                    && existing.ruleId() == desired.ruleId()
+                    && existing.memberId() == desired.memberId()
+                    && existing.amount() == desired.amount()
+                    && Objects.equals(existing.currencyType(), desired.currencyType())
+                    && Objects.equals(existing.subjectType(), desired.subjectType())
+                    && Objects.equals(existing.subjectExtId(), desired.subjectExtId())) {
+                return existing;
+            }
+        }
+        return null;
+    }
+
+    private void reverseAwards(List<RewardLedgerEntry> awards, long reversalEventId,
+                               RewardLedgerDao rewardLedgerDao, MemberDao memberDao) {
+        for (RewardLedgerEntry award : awards) {
+            rewardLedgerDao.insert(new RewardLedgerEntry(
+                    0L,
+                    award.ruleEvaluationId(),
+                    award.ruleOutcomeId(),
+                    award.ruleId(),
+                    reversalEventId,
+                    award.memberId(),
+                    award.currencyType(),
+                    -award.amount(),
+                    "REVERSAL",
+                    award.id(),
+                    award.subjectType(),
+                    award.subjectExtId(),
+                    null));
+            reverseMemberBalance(memberDao, award);
+        }
+    }
+
+    private void reverseMemberBalance(MemberDao memberDao, RewardLedgerEntry award) {
+        switch (award.currencyType()) {
+            case "PRIMARY" -> memberDao.incrementPCurrency(award.memberId(), -award.amount());
+            case "SECONDARY" -> memberDao.incrementSCurrency(award.memberId(), -award.amount());
+            default -> log.warnf("Cannot reverse unknown currency type '%s' on reward ledger %d",
+                    award.currencyType(), award.id());
+        }
+    }
+
+    private void applyMemberBalance(MemberDao memberDao, String currencyType, long memberId, int amount) {
+        switch (currencyType) {
+            case "PRIMARY" -> memberDao.incrementPCurrency(memberId, amount);
+            case "SECONDARY" -> memberDao.incrementSCurrency(memberId, amount);
+            default -> log.warnf("Cannot apply unknown currency type '%s' for member %d", currencyType, memberId);
+        }
+    }
+
+    private RuleContext normalizeReplacementContext(RuleContext ctx, List<RewardLedgerEntry> activeAwards) {
+        if (ctx.memberPCurrency() == null || ctx.memberSCurrency() == null || activeAwards.isEmpty()) {
+            return ctx;
+        }
+
+        int primaryAdjustment = 0;
+        int secondaryAdjustment = 0;
+        for (RewardLedgerEntry award : activeAwards) {
+            switch (award.currencyType()) {
+                case "PRIMARY" -> primaryAdjustment += award.amount();
+                case "SECONDARY" -> secondaryAdjustment += award.amount();
+                default -> {
+                }
+            }
+        }
+
+        return ctx.withMemberCurrencies(
+                ctx.memberPCurrency() - primaryAdjustment,
+                ctx.memberSCurrency() - secondaryAdjustment);
+    }
+
+    private record DesiredRewardLedgerEntry(
+            long ruleEvaluationId,
+            long ruleOutcomeId,
+            long ruleId,
+            long eventId,
+            long memberId,
+            String currencyType,
+            int amount,
+            String subjectType,
+            Long subjectExtId) {
+
+        private DesiredRewardLedgerEntry withRuleEvaluationId(long newRuleEvaluationId) {
+            return new DesiredRewardLedgerEntry(
+                    newRuleEvaluationId,
+                    ruleOutcomeId,
+                    ruleId,
+                    eventId,
+                    memberId,
+                    currencyType,
+                    amount,
+                    subjectType,
+                    subjectExtId);
+        }
     }
 
     @SuppressWarnings("null")

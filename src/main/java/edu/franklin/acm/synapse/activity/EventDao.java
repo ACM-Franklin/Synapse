@@ -46,6 +46,13 @@ public interface EventDao {
             """)
     List<Event> findRecentByMember(@Bind("memberId") long memberId, @Bind("limit") int limit);
 
+            @SqlQuery("""
+                SELECT id, member_id, channel_id, event_type, created_at
+                FROM events
+                WHERE id = :eventId
+                """)
+            Event findById(@Bind("eventId") long eventId);
+
     @SqlQuery("""
             SELECT COUNT(*) FROM events
             WHERE member_id = :memberId AND event_type = :eventType

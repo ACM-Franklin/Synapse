@@ -1,24 +1,20 @@
-# Current Task: Phase 5 Data Proof Closeout
+# Current Task: Phase 6 Bulk Replay Orchestration
 
 ## Goal
 
-Close Phase 5 by upgrading the real DB to the current schema and making the
-proof pass repeatable.
+Make stored message reward recomputation runnable across the whole active
+message set instead of one subject at a time.
 
 ## Plan
 
-- [x] Capture a live SQLite baseline from the current guild dataset.
-- [x] Lock the first acceptable mismatch category for thread seed messages.
-- [x] Add concrete reconciliation report queries for missing, extra, stale, and deleted records.
-- [x] Sanity-check the reconciliation pack against live data, including deleted-state after the real DB upgrade.
-- [x] Add a repeatable proof report command and validate it against the real DB.
+- [x] Add a cursor-based active-message replay query so orchestration can walk stored messages deterministically in batches.
+- [x] Extend the replay service with a bulk active-message recomputation pass and a concrete run summary.
+- [x] Prove that batched replay skips deleted messages, advances by cursor, and applies replay across multiple batches cleanly.
+- [x] Validate the slice with focused DAO and replay-service tests, then rerun the broader suite and hygiene checks.
 
 ## Review
 
-- Added `DATA_PROOF_LIVE_BASELINE.md` with the first real SQLite snapshot from the active guild dataset, including baseline counts, anchor entities, and integrity findings.
-- Locked the first acceptable mismatch category for thread seed-message counts using the exact JDA `ThreadChannel.getMessageCount()` behavior.
-- Added a real migration file for historical scan state so older databases can be upgraded safely.
-- Added reconciliation queries for missing, orphaned, stale, inactive, and deleted-state checks, then ran them against the live DB.
-- Fixed `MigrationManager` so fresh databases use the schema snapshot while existing databases run upgrade scripts only, which avoids replaying additive migrations onto already-current tables.
-- Added `2_message_delete_state.sql`, applied both real upgrade scripts to `target/synapse.sqlite`, and recorded them in the live `migrations` table.
-- Added `scripts/data-proof-report.sh` and validated it against the upgraded real DB; the full reconciliation set now returns clean zeroes where expected.
+- Added a cursor-based replay candidate query in `MessageEventDao` so active stored messages can be walked deterministically by internal row ID while skipping deleted rows.
+- Extended `MessageRewardReplayService` with `replayAllActiveMessages(batchSize)`, which runs stored-message replay in batches and returns a concrete run summary instead of hand-waving about “bulk replay” with no implementation.
+- Added focused tests proving the DAO cursor query skips deleted messages and proving the bulk replay path processes multiple stored messages across multiple batches.
+- The remaining gap is no longer internal orchestration. It is the missing admin/API trigger surface that would let an operator actually invoke bulk replay safely.

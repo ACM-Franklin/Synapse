@@ -101,8 +101,27 @@ public class MessageIngestionHandler {
                 m.getAuthor().getName(),
                 m.getAuthor().isBot());
 
-        messagePersistenceService.updateMessageSnapshot(memberInternalId, channelInternalId, threadInternalId, m);
+        long eventId = messagePersistenceService.updateMessageSnapshot(memberInternalId, channelInternalId, threadInternalId, m);
         log.debug("Updated live message snapshot {} from {}", m.getId(), m.getAuthor().getName());
+
+        String attFilename = m.getAttachments().isEmpty() ? null : m.getAttachments().get(0).getFileName();
+        String attContentType = m.getAttachments().isEmpty() ? null : m.getAttachments().get(0).getContentType();
+        RuleContext ctx = RuleContext.forMessage(
+            eventId, memberInternalId, channelInternalId,
+            MessageEvent.fromDiscord(eventId, threadInternalId, m),
+            m.getAuthor().getIdLong(),
+            false, null,
+            memberDao.findPCurrency(memberInternalId),
+            memberDao.findSCurrency(memberInternalId),
+            m.getChannel() instanceof ThreadChannel tc
+                ? tc.getParentChannel().getIdLong()
+                : m.getChannel().getIdLong(),
+            m.getChannel() instanceof ThreadChannel tc2
+                ? tc2.getParentChannel().getType().name()
+                : m.getChannel().getType().name(),
+            null,
+            attFilename, attContentType);
+        ruleEvents.fireAsync(new RuleEvaluationRequest(ctx, true));
     }
 
     public void handleDelete(long messageExtId) {
@@ -126,7 +145,7 @@ public class MessageIngestionHandler {
                     LocalDateTime.now(ZoneOffset.UTC).toString()));
             txMessageDao.markDeleted(messageExtId);
 
-            for (RewardLedgerEntry award : txRewardLedgerDao.findUnreversedAwardsByEventId(target.eventId())) {
+            for (RewardLedgerEntry award : txRewardLedgerDao.findUnreversedAwardsBySubject("MESSAGE", messageExtId)) {
                 txRewardLedgerDao.insert(new RewardLedgerEntry(
                         0L,
                         award.ruleEvaluationId(),
@@ -138,6 +157,8 @@ public class MessageIngestionHandler {
                         -award.amount(),
                         "REVERSAL",
                         award.id(),
+                        award.subjectType(),
+                        award.subjectExtId(),
                         null));
                 reverseMemberBalance(txMemberDao, award);
             }

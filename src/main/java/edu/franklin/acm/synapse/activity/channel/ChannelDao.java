@@ -3,6 +3,7 @@ package edu.franklin.acm.synapse.activity.channel;
 import java.util.Collection;
 import java.util.List;
 
+import org.jdbi.v3.sqlobject.config.RegisterConstructorMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -39,4 +40,13 @@ public interface ChannelDao {
 
     @SqlUpdate("UPDATE channels SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE ext_id = :extId")
     void markInactive(@Bind("extId") long extId);
+
+    @RegisterConstructorMapper(ChannelReplayTarget.class)
+    @SqlQuery("""
+            SELECT c.id, c.ext_id, c.type, cat.ext_id AS category_ext_id
+            FROM channels c
+            LEFT JOIN categories cat ON cat.id = c.category_id
+            WHERE c.id = :channelId
+            """)
+    ChannelReplayTarget findReplayTargetById(@Bind("channelId") long channelId);
 }

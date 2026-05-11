@@ -1,6 +1,7 @@
 package edu.franklin.acm.synapse.activity.message;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import org.jdbi.v3.core.Jdbi;
@@ -73,6 +74,34 @@ class MessageEventDaoTest {
                 () -> assertNotNull(row.get("deleted_at")),
                 () -> assertNull(dao.findDeletionTargetByExtId(3002L)));
     }
+
+            @Test
+            void replayCandidatesSkipDeletedMessagesAndAdvanceByCursor() {
+            Jdbi jdbi = JdbiTestSupport.sqliteWithSchema(tempDir);
+            long memberId = JdbiTestSupport.insertMember(jdbi, 1003L);
+            long channelId = JdbiTestSupport.insertChannel(jdbi, 2003L);
+            long firstEventId = JdbiTestSupport.insertEvent(jdbi, memberId, channelId, "MESSAGE_CREATE");
+            long deletedEventId = JdbiTestSupport.insertEvent(jdbi, memberId, channelId, "MESSAGE_CREATE");
+            long thirdEventId = JdbiTestSupport.insertEvent(jdbi, memberId, channelId, "MESSAGE_CREATE");
+            MessageEventDao dao = JdbiTestSupport.dao(jdbi, MessageEventDao.class);
+
+            long firstMessageId = dao.upsert(JdbiTestSupport.messageEvent(firstEventId, 3003L, "first", 0, false, 0));
+            dao.upsert(JdbiTestSupport.messageEvent(deletedEventId, 3004L, "deleted", 0, false, 0));
+            long thirdMessageId = dao.upsert(JdbiTestSupport.messageEvent(thirdEventId, 3005L, "third", 0, false, 0));
+            dao.markDeleted(3004L);
+
+            List<MessageReplayCandidate> firstBatch = dao.findReplayCandidatesAfterId(0L, 10);
+            List<MessageReplayCandidate> afterFirst = dao.findReplayCandidatesAfterId(firstMessageId, 10);
+
+            assertAll(
+                () -> assertEquals(List.of(3003L, 3005L), firstBatch.stream()
+                    .map(MessageReplayCandidate::messageExtId)
+                    .toList()),
+                () -> assertEquals(List.of(3005L), afterFirst.stream()
+                    .map(MessageReplayCandidate::messageExtId)
+                    .toList()),
+                () -> assertEquals(thirdMessageId, afterFirst.get(0).messageId()));
+            }
 
     private static int intValue(Map<String, Object> row, String key) {
         return ((Number) row.get(key)).intValue();

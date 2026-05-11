@@ -1,5 +1,7 @@
 package edu.franklin.acm.synapse.activity.message;
 
+import java.util.List;
+
 import org.jdbi.v3.sqlobject.config.RegisterConstructorMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindMethods;
@@ -12,6 +14,7 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
  * fields in place.
  */
 @RegisterConstructorMapper(MessageDeletionTarget.class)
+@RegisterConstructorMapper(MessageReplayCandidate.class)
 public interface MessageEventDao {
 
     /**
@@ -73,6 +76,32 @@ public interface MessageEventDao {
     @SqlQuery("SELECT id FROM messages WHERE ext_id = :extId")
     Long findIdByExtId(@Bind("extId") long extId);
 
+        @RegisterConstructorMapper(MessageEvent.class)
+        @SqlQuery("""
+            SELECT id, event_id, ext_id, thread_id, flags, content_length, type,
+               attachment_count, reaction_count, mention_user_count,
+               mention_role_count, mention_channel_count, embed_count,
+               content, referenced_message_ext_id, edited_at, created_at,
+               is_reply, spawned_thread, has_attachments, mention_everyone,
+               is_tts, is_pinned, has_stickers, has_poll, is_voice_message,
+               author_is_bot
+            FROM messages
+            WHERE ext_id = :extId
+            """)
+        MessageEvent findByExtId(@Bind("extId") long extId);
+
+        @SqlQuery("""
+                        SELECT id AS message_id,
+                                     ext_id AS message_ext_id
+                        FROM messages
+                        WHERE is_deleted = 0
+                            AND id > :afterMessageId
+                        ORDER BY id
+                        LIMIT :limit
+                        """)
+        List<MessageReplayCandidate> findReplayCandidatesAfterId(@Bind("afterMessageId") long afterMessageId,
+                                                                                                                         @Bind("limit") int limit);
+
     @SqlQuery("SELECT event_id FROM messages WHERE ext_id = :extId")
     Long findEventIdByExtId(@Bind("extId") long extId);
 
@@ -108,7 +137,7 @@ public interface MessageEventDao {
             """)
     void decrementReactionCount(@Bind("messageId") long messageId);
 
-        @SqlUpdate("""
+    @SqlUpdate("""
             UPDATE messages
             SET reaction_count = CASE
             WHEN reaction_count > :count THEN reaction_count - :count
@@ -116,12 +145,12 @@ public interface MessageEventDao {
             END
             WHERE id = :messageId
             """)
-        void decrementReactionCountBy(@Bind("messageId") long messageId, @Bind("count") int count);
+    void decrementReactionCountBy(@Bind("messageId") long messageId, @Bind("count") int count);
 
-        @SqlUpdate("""
+    @SqlUpdate("""
             UPDATE messages
             SET reaction_count = 0
             WHERE id = :messageId
             """)
-        void clearReactionCount(@Bind("messageId") long messageId);
+    void clearReactionCount(@Bind("messageId") long messageId);
 }

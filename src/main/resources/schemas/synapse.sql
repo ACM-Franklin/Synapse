@@ -414,6 +414,8 @@ CREATE TABLE IF NOT EXISTS reward_ledger (
     amount                     INTEGER NOT NULL,
     transaction_type           VARCHAR NOT NULL DEFAULT 'AWARD',
     reverses_reward_ledger_id  BIGINT,
+    subject_type               VARCHAR,
+    subject_ext_id             BIGINT,
     created_at                 TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (rule_evaluation_id)        REFERENCES rule_evaluations (id),
     FOREIGN KEY (rule_outcome_id)           REFERENCES rule_outcomes (id),
@@ -426,6 +428,7 @@ CREATE TABLE IF NOT EXISTS reward_ledger (
 CREATE INDEX IF NOT EXISTS reward_ledger_member_idx ON reward_ledger (member_id, created_at);
 CREATE INDEX IF NOT EXISTS reward_ledger_event_idx ON reward_ledger (event_id);
 CREATE INDEX IF NOT EXISTS reward_ledger_rule_eval_idx ON reward_ledger (rule_evaluation_id);
+CREATE INDEX IF NOT EXISTS reward_ledger_subject_idx ON reward_ledger (subject_type, subject_ext_id, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS reward_ledger_award_uq
     ON reward_ledger (rule_evaluation_id, rule_outcome_id, currency_type, transaction_type)
     WHERE transaction_type = 'AWARD';

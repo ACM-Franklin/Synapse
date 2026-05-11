@@ -55,6 +55,10 @@ public record RuleContext(
         Long voiceChannelExtId,
         Double sessionDurationMinutes,
 
+        // Stable reward subject identity for delta-safe accounting
+        String subjectType,
+        Long subjectExtId,
+
         // Timestamp
         String createdAt) {
 
@@ -135,6 +139,7 @@ public record RuleContext(
                 channelExtId, channelType, categoryExtId,
                 null, null,
                 null, null,
+                "MESSAGE", msg.extId(),
                 null
         );
     }
@@ -157,6 +162,7 @@ public record RuleContext(
                 null, null, null,                                          // channel state
                 null, null,                                                // role change
                 null, null,                                                // voice
+                null, null,                                                // subject
                 null                                                       // createdAt
         );
     }
@@ -180,6 +186,7 @@ public record RuleContext(
                 null, null, null,                                          // channel state
                 rolesAdded, rolesRemoved,                                  // role change
                 null, null,                                                // voice
+                null, null,                                                // subject
                 null                                                       // createdAt
         );
     }
@@ -204,7 +211,48 @@ public record RuleContext(
                 channelExtId, channelType, null,                           // channel state
                 null, null,                                                // role change
                 channelExtId, sessionDurationMinutes,                      // voice
+                null, null,                                                // subject
                 null                                                       // createdAt
         );
+    }
+
+    public RuleContext withMemberCurrencies(int memberPCurrency, int memberSCurrency) {
+        return new RuleContext(
+                eventType,
+                eventId,
+                memberId,
+                channelId,
+                contentLength,
+                authorIsBot,
+                isReply,
+                hasPoll,
+                hasStickers,
+                isTts,
+                isPinned,
+                hasAttachments,
+                attachmentCount,
+                reactionCount,
+                mentionUserCount,
+                mentionEveryone,
+                embedCount,
+                isVoiceMessage,
+                messageType,
+                attachmentFilename,
+                attachmentContentType,
+                memberExtId,
+                memberIsBoosting,
+                memberJoinedAt,
+                memberPCurrency,
+                memberSCurrency,
+                channelExtId,
+                channelType,
+                categoryExtId,
+                rolesAdded,
+                rolesRemoved,
+                voiceChannelExtId,
+                sessionDurationMinutes,
+                subjectType,
+                subjectExtId,
+                createdAt);
     }
 }
