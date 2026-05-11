@@ -35,10 +35,19 @@ For a full description of what Synapse is and how it works, see [local_docs/WHAT
 
 Set these environment variables (or add them to a `.env` file in the project root).
 
+Check readiness without printing secret values:
+
+```shell
+bash scripts/check-runtime-config.sh bot
+bash scripts/check-runtime-config.sh frontend
+bash scripts/check-runtime-config.sh prod
+```
+
 ### Bot core
 
 | Variable                          | Required | Default  | Description                                         |
 |-----------------------------------|----------|----------|-----------------------------------------------------|
+| `SYNAPSE_DISCORD_BOT_ENABLED`     | No       | `true`   | Disable JDA startup for DB/API smoke tests          |
 | `SYNAPSE_DISCORD_TOKEN`           | Yes      | —        | Your Discord bot token                              |
 | `SYNAPSE_DISCORD_GUILD_ID`        | Yes      | `0`      | The snowflake ID of the guild this instance manages |
 | `SYNAPSE_DISCORD_SCAN_HISTORICAL` | No       | `false`  | Run historical channel scan on startup              |
@@ -145,6 +154,19 @@ docker cp synapse-java-backend:/data/synapse.sqlite data/synapse.sqlite
 bash scripts/data-proof-report.sh
 ```
 
+## PostgreSQL Smoke Test
+
+Before claiming production readiness, run the prod profile against PostgreSQL:
+
+```shell
+bash scripts/prod-postgres-smoke.sh
+```
+
+The smoke test starts temporary PostgreSQL and backend containers, disables JDA
+with `SYNAPSE_DISCORD_BOT_ENABLED=false`, verifies `/api/health`, confirms core
+schema tables exist, and then removes the temporary containers. This proves the
+prod datasource path without opening another Discord gateway session.
+
 ---
 
 ## Project Structure
@@ -202,6 +224,18 @@ Production assumes a same-host reverse proxy for the frontend and `/api/*`.
 The `%prod` profile disables Quarkus CORS and enables trusted forwarded-header
 handling so TLS-terminating proxies can preserve secure-cookie behavior. Do not
 expose the Quarkus port directly to the internet with forwarded headers enabled.
+
+## Rule Authoring Status
+
+Rules are currently read-only through the HTTP API. The engine supports
+composable rules made from a fixed predicate catalogue, AND logic across
+predicates, cooldowns, and implemented currency outcomes. Arbitrary nested logic
+trees, raw expression builders, rule mutation endpoints, audit logging for rule
+changes, and simulation endpoints are not implemented yet.
+
+The first frontend should display rules and validity reasons, not create or edit
+rules. The local design contract lives in
+[local_docs/RULE_AUTHORING_FRONTEND_CONTRACT.md](local_docs/RULE_AUTHORING_FRONTEND_CONTRACT.md).
 
 ---
 

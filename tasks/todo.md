@@ -1,23 +1,23 @@
-# Current Task: Housekeeping And Live Backend Readiness
+# Current Task: Pre-Frontend Backend Risk Burn-Down
 
 ## Goal
 
-Remove stale repo noise, verify the project structure is still sane, stop the
-old Python prototype safely, and prepare the Java backend for a real live
-Discord run before frontend integration.
+Address backend readiness concerns that do not require user-provided Discord
+OAuth secrets or manual Discord application changes before frontend integration.
 
 ## Plan
 
-- [x] Inventory tracked and ignored docs for stale or duplicate guidance.
-- [x] Review project directories for template leftovers and confusing artifacts.
-- [x] Inspect Docker state and identify the old Python Synapse prototype.
-- [x] Stop the old Python prototype without deleting fallback assets.
-- [x] Verify Java backend live-run prerequisites and data-proof commands.
-- [x] Apply safe cleanup edits and run validation.
+- [x] Add non-secret runtime config validation for bot/frontend/prod readiness.
+- [x] Add a bot-disabled runtime mode for DB/API smoke tests.
+- [x] Prove the PostgreSQL production profile with a temporary local container.
+- [x] Document rule-authoring constraints so frontend design does not invent unsupported behavior.
+- [x] Run tests, script checks, and commit tracked changes.
 
 ## Review
 
-- Old Python prototype containers stopped: `synapse-dashboard`, `synapse-api`, `synapse-bot`, `synapse-db`. Containers, images, and volumes were preserved for rollback.
-- Java backend image now runs live against Discord with the explicit SQLite profile.
-- Live proof result: historical scan job 1 completed with 64 checkpoints, 2,716 messages, 1,220 reaction rows, 50 members, 47 channels, zero duplicate messages, zero reaction mismatches, and zero reconciliation failures.
-- Full test suite passes, `git diff --check` passes, and `GET /api/health` returns 200 from the running Java container.
+- `scripts/check-runtime-config.sh bot` passes against current `.env`.
+- `scripts/check-runtime-config.sh frontend` correctly reports missing OAuth client ID, client secret, and admin role IDs without printing secret values.
+- `scripts/check-runtime-config.sh prod` correctly reports missing production DB values without printing secret values.
+- `scripts/prod-postgres-smoke.sh` passed: temporary PostgreSQL plus prod-profile backend reached `/api/health` with JDA disabled and schema tables present.
+- Rule authoring remains read-only for the first frontend; the builder contract is documented locally and requires backend mutation/catalogue/simulation work before editable rules are safe.
+- Full test suite passes and `git diff --check` is clean.

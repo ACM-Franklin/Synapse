@@ -32,6 +32,7 @@ public class SynapseBot {
     private static final Logger log = LoggerFactory.getLogger(SynapseBot.class);
 
     // Configuration properties
+    private final boolean botEnabled;
     private final String discordToken;
     private final boolean historicalScanEnabled;
     private final long guildId;
@@ -57,11 +58,13 @@ public class SynapseBot {
      *                                  (from guild.id property, default 0)
      */
     public SynapseBot(
+            @ConfigProperty(name = "synapse.discord.bot.enabled", defaultValue = "true") boolean botEnabled,
             @ConfigProperty(name = "synapse.discord.token") String discordToken,
             HistoricalScanCoordinator historicalScanCoordinator,
             GuildLiveScanner guildLiveScanner,
             @ConfigProperty(name = "synapse.discord.scan-historical", defaultValue = "false") boolean scanHistorical,
             @ConfigProperty(name = "synapse.discord.guild.id", defaultValue = "0") long guildId) {
+        this.botEnabled = botEnabled;
         this.discordToken = discordToken;
         this.historicalScanCoordinator = historicalScanCoordinator;
         this.guildLiveScanner = guildLiveScanner;
@@ -82,6 +85,12 @@ public class SynapseBot {
     @SuppressWarnings("unused")
     void start() throws InterruptedException {
         log.info("SynapseBot starting up...");
+        if (!botEnabled) {
+            log.warn("Discord gateway startup is disabled by configuration; API and database smoke tests can run without JDA");
+            statisticsDao.recordStartup();
+            return;
+        }
+
         jda = JDABuilder.createDefault(discordToken)
                 .enableIntents(
                         GatewayIntent.GUILD_MESSAGES,
